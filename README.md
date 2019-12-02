@@ -12,3 +12,8 @@ Features:
 * Displays real-time reflow charts
 
 Use on your on risk. Attention: Quick and dirty solution.
+
+![alt text](https://github.com/mfussi/beta-reflow-controller-v3/blob/master/screenshots/mainscreen.png "Main Window")
+
+![alt text](https://github.com/mfussi/beta-reflow-controller-v3/blob/master/screenshots/chart.png "Charts")
+
