@@ -1,0 +1,21 @@
+{
+  "name": "CR11",
+  "preheat": {
+    "target_temperature": 100.0,
+    "intensity": 1.0,
+    "hold_for": 240,
+    "time": 0
+  },
+  "soak": {
+    "target_temperature": 130.0,
+    "intensity": 0.50,
+    "hold_for": 0,
+    "time": 0
+  },
+  "reflow": {
+    "target_temperature": 145.0,
+    "intensity": 1.0,
+    "hold_for": 90,
+    "time": 0
+  }
+}

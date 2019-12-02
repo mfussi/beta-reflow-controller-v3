@@ -1,0 +1,21 @@
+{
+  "name": "SAC305",
+  "preheat": {
+    "target_temperature": 100.0,
+    "intensity": 1.0,
+    "hold_for": 90,
+    "time": 0
+  },
+  "soak": {
+    "target_temperature": 150.0,
+    "intensity": 0.75,
+    "hold_for": 180,
+    "time": 0
+  },
+  "reflow": {
+    "target_temperature": 240.0,
+    "intensity": 1.0,
+    "hold_for": 90,
+    "time": 0
+  }
+}
