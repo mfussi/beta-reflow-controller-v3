@@ -11,6 +11,8 @@ Features:
 * Export reflow controller logs (including temperature, target temperature, intensity)
 * Displays real-time reflow charts
 
+Executable: https://github.com/mfussi/beta-reflow-controller-v3/tree/master/release
+
 Use on your on risk. Attention: Quick and dirty solution.
 
 ![alt text](https://github.com/mfussi/beta-reflow-controller-v3/blob/master/screenshots/mainscreen.png "Main Window")
