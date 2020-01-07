@@ -8,7 +8,7 @@
   },
   "soak": {
     "target_temperature": 130.0,
-    "intensity": 0.50,
+    "intensity": 1.00,
     "hold_for": 0,
     "time": 0
   },

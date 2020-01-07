@@ -9,7 +9,7 @@ import com.tangentlines.reflowcontroller.reflow.profile.ReflowProfile
 import java.util.*
 
 private const val UPDATE_INTERVAL = 500L
-private const val BRAKE = 1.0f
+private const val BRAKE = 0.75f
 
 class ReflowController(port : String) {
 
@@ -115,6 +115,7 @@ class ReflowController(port : String) {
     fun update() {
 
         val currentTemp = getTemperature()
+        var holdFor = -1;
 
         reflowProfile?.let { profile ->
 
@@ -125,6 +126,8 @@ class ReflowController(port : String) {
                 if (currentReflowProfilePhase < profile.getPhases().size) {
 
                     val phase = profile.getPhases()[currentReflowProfilePhase]
+                    holdFor = phase.holdFor;
+
                     if (phase.time > 0 && (getTimeSinceCommand() ?: 0L) > phase.time * 1000L) {
 
                         // next phase
@@ -148,6 +151,7 @@ class ReflowController(port : String) {
 
         }
 
+        val brake = if(holdFor != -1 && holdFor < 10) 0.0f else BRAKE;
         val start = System.currentTimeMillis()
         val tTemp = targetTemperature
 
@@ -158,12 +162,12 @@ class ReflowController(port : String) {
 
         } else {
 
-            if(currentTemp < tTemp - 10 * BRAKE){
+            if(currentTemp < tTemp - 10 * brake){
 
                 /* far target */
                 device.setPulse(intensity * 1.0f)
 
-            } else if(currentTemp < tTemp - 3 * BRAKE){
+            } else if(currentTemp < tTemp - 3 * brake){
 
                 /* near target */
                 device.setPulse(intensity * 0.5f)
