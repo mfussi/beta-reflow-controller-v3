@@ -13,7 +13,7 @@ Features:
 
 Executable: https://github.com/mfussi/beta-reflow-controller-v3/tree/master/release
 
-Use on your on risk. Attention: Quick and dirty solution.
+Use at your on risk. Attention: Quick and dirty solution.
 
 ![alt text](https://github.com/mfussi/beta-reflow-controller-v3/blob/master/screenshots/mainscreen.png "Main Window")
 
