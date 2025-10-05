@@ -5,6 +5,7 @@ import com.tangentlines.reflowcontroller.client.BackendWithEvents
 import com.tangentlines.reflowcontroller.client.ControllerBackend
 import com.tangentlines.reflowcontroller.client.Event
 import com.tangentlines.reflowcontroller.client.LocalControllerBackend
+import com.tangentlines.reflowcontroller.client.RemoteControllerBackend
 import com.tangentlines.reflowcontroller.client.StatusDto
 import com.tangentlines.reflowcontroller.log.Logger
 import com.tangentlines.reflowcontroller.log.ReflowChart
@@ -15,9 +16,13 @@ import com.tangentlines.reflowcontroller.reflow.profile.loadProfiles
 import org.joda.time.format.DateTimeFormat
 import java.awt.Component
 import java.awt.Toolkit
+import java.awt.event.ActionEvent
 import java.util.*
 import javax.swing.DefaultComboBoxModel
 import javax.swing.JFrame
+import javax.swing.JMenu
+import javax.swing.JMenuBar
+import javax.swing.JMenuItem
 import javax.swing.JOptionPane
 
 class MainWindowWrapper(private val window : MainWindow, private val controller: ApplicationController) {
@@ -28,6 +33,8 @@ class MainWindowWrapper(private val window : MainWindow, private val controller:
 
         window.title = "Reflow Controller"
         window.defaultCloseOperation = JFrame.EXIT_ON_CLOSE
+
+        setupMenu()
 
         backend.onStateChanged.add { updateUI() }
         backend.onPhaseChanged.add { phaseChanged(it?.first, it?.second, it?.third) }
@@ -80,6 +87,48 @@ class MainWindowWrapper(private val window : MainWindow, private val controller:
 
         }, 0, 1000)
 
+    }
+
+    private fun setupMenu() {
+        val bar = JMenuBar()
+        val conn = JMenu("Connection")
+
+        // 1) Use Remote API...
+        val useRemote = JMenuItem("Use Remote API…").apply {
+            addActionListener { _: ActionEvent ->
+                RemoteConfigDialog(window) { host, port ->
+                    backend.swap(RemoteControllerBackend(host, port))
+                    JOptionPane.showMessageDialog(
+                        window,
+                        "Remote API set to http://$host:$port",
+                        "Remote",
+                        JOptionPane.INFORMATION_MESSAGE
+                    )
+                }.isVisible = true
+            }
+        }
+
+        // 2) Use Local Controller
+        val useLocal = JMenuItem("Use Local Controller").apply {
+            addActionListener {
+                backend.swap(LocalControllerBackend(controller))
+                JOptionPane.showMessageDialog(
+                    window,
+                    "Switched to local controller",
+                    "Local",
+                    JOptionPane.INFORMATION_MESSAGE
+                )
+            }
+        }
+
+        conn.add(useRemote)
+        conn.add(useLocal)
+        bar.add(conn)
+
+        // Attach the menubar to the window
+        window.jMenuBar = bar
+        // If your codebase uses `menuBar` instead of `jMenuBar`, do this:
+        // this.menuBar = bar
     }
 
     private fun phaseChanged(profile: String?, phase: String?, finished : Boolean?) {

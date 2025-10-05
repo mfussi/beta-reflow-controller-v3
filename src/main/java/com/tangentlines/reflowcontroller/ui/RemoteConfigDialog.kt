@@ -15,7 +15,7 @@ class RemoteConfigDialog(
 
     private val prefs: Preferences = Preferences.userRoot().node("com.tangentlines.reflowcontroller.remote")
     private val hostField = JTextField(prefs.get("remote_host", "localhost"), 16)
-    private val portField = JTextField(prefs.getInt("remote_port", 8081).toString(), 6)
+    private val portField = JTextField(prefs.getInt("remote_port", 8090).toString(), 6)
     private val statusLabel = JLabel(" ")
 
     init {
