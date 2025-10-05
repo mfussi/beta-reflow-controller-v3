@@ -7,6 +7,7 @@ import com.tangentlines.reflowcontroller.reflow.COMConnector
 import com.tangentlines.reflowcontroller.reflow.ReflowController
 import com.tangentlines.reflowcontroller.reflow.profile.Phase
 import com.tangentlines.reflowcontroller.reflow.profile.ReflowProfile
+import java.io.Serializable
 
 class ApplicationController() {
 
@@ -131,6 +132,14 @@ class ApplicationController() {
 
     fun getPhase(): String? {
         return reflow?.getPhase()
+    }
+
+    fun getProfile(): String? {
+        return reflow?.getProfile()?.name
+    }
+
+    fun isFinished(): Boolean? {
+        return reflow?.isFinished()
     }
 
 }

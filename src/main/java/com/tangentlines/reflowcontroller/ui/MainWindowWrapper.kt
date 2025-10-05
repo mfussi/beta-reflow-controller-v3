@@ -1,6 +1,11 @@
 package com.tangentlines.reflowcontroller.ui
 
 import com.tangentlines.reflowcontroller.ApplicationController
+import com.tangentlines.reflowcontroller.client.BackendWithEvents
+import com.tangentlines.reflowcontroller.client.ControllerBackend
+import com.tangentlines.reflowcontroller.client.Event
+import com.tangentlines.reflowcontroller.client.LocalControllerBackend
+import com.tangentlines.reflowcontroller.client.StatusDto
 import com.tangentlines.reflowcontroller.log.Logger
 import com.tangentlines.reflowcontroller.log.ReflowChart
 import com.tangentlines.reflowcontroller.log.StateLogger
@@ -17,13 +22,15 @@ import javax.swing.JOptionPane
 
 class MainWindowWrapper(private val window : MainWindow, private val controller: ApplicationController) {
 
+    private val backend = BackendWithEvents(LocalControllerBackend(controller))
+    
     init {
 
         window.title = "Reflow Controller"
         window.defaultCloseOperation = JFrame.EXIT_ON_CLOSE
 
-        controller.onStateChanged.add( ::updateUI )
-        controller.onPhaseChanged.add( ::phaseChanged )
+        backend.onStateChanged.add { updateUI() }
+        backend.onPhaseChanged.add { phaseChanged(it?.first, it?.second, it?.third) }
 
         window.btnRefresh.addActionListener { updatePorts() }
         updatePorts()
@@ -33,23 +40,23 @@ class MainWindowWrapper(private val window : MainWindow, private val controller:
 
         window.btnChart.addActionListener { executeAction("chart") { ReflowChart().show(window.root) }}
         window.btnExport.addActionListener { executeAction("export", success = true) { StateLogger.export() }}
-        window.btnClear.addActionListener { executeAction("clear", ask = true) { controller.clearLogs() }}
+        window.btnClear.addActionListener { executeAction("clear", ask = true) { backend.clearLogs() }}
 
         window.btnStart.addActionListener { executeAction("start") {
 
             val profile = window.cbProfile.selectedItem
             when(profile){
-                is String -> controller.start(null)
-                is ReflowProfile -> controller.start(profile)
+                is String -> backend.manualStart(null)
+                is ReflowProfile -> backend.startProfileByName(profile.name)
                 else -> false
             }
 
         }}
 
-        window.btnStop.addActionListener { executeAction("stop", ask = true) { controller.stop() }}
+        window.btnStop.addActionListener { executeAction("stop", ask = true) { backend.stop() }}
 
-        window.btnConnect.addActionListener { executeAction("connect") { controller.connect(window.txtPort.selectedItem as String) } }
-        window.btnDisconnect.addActionListener { executeAction("disconnect", ask = true) { controller.disconnect() } }
+        window.btnConnect.addActionListener { executeAction("connect") { backend.connect(window.txtPort.selectedItem as String) } }
+        window.btnDisconnect.addActionListener { executeAction("disconnect", ask = true) { backend.disconnect() } }
 
         setSliderTemperatureText()
         setSliderIntensityText()
@@ -61,7 +68,7 @@ class MainWindowWrapper(private val window : MainWindow, private val controller:
 
             val temp = window.slTemperature.value
             val intensity = (window.slIntesity.value / 100.0f)
-            executeAction("send") { controller.setTargetTemperature(intensity, temp.toFloat()) }
+            executeAction("send") { backend.setTargetTemperature(intensity, temp.toFloat()) }
 
         }
 
@@ -75,12 +82,12 @@ class MainWindowWrapper(private val window : MainWindow, private val controller:
 
     }
 
-    private fun phaseChanged(reflowProfile: ReflowProfile, phase: Phase?, finished: Boolean) {
+    private fun phaseChanged(profile: String?, phase: String?, finished : Boolean?) {
 
-        if(finished){
+        if(finished == true){
 
             Toolkit.getDefaultToolkit().beep();
-            JOptionPane.showMessageDialog(window.root, "Your pcb is now finished. Please open the oven door and let the pcb cool down", "Finished - ${reflowProfile.name}", JOptionPane.INFORMATION_MESSAGE)
+            JOptionPane.showMessageDialog(window.root, "Your pcb is now finished. Please open the oven door and let the pcb cool down", "Finished - ${profile}", JOptionPane.INFORMATION_MESSAGE)
 
         }
 
@@ -103,7 +110,7 @@ class MainWindowWrapper(private val window : MainWindow, private val controller:
     }
 
     private fun updatePorts() {
-        window.txtPort.model = DefaultComboBoxModel<Any>(controller.availablePorts().toTypedArray())
+        window.txtPort.model = DefaultComboBoxModel<Any>(backend.availablePorts().toTypedArray())
     }
 
     private fun updateProfiles() {
@@ -118,28 +125,28 @@ class MainWindowWrapper(private val window : MainWindow, private val controller:
 
     private fun updateUI() {
 
-        enableRecursive(window.btnConnect,!controller.isConnected() && controller.availablePorts().isNotEmpty())
-        enableRecursive(window.btnDisconnect, controller.isConnected())
-        enableRecursive(window.panelSettings, controller.isConnected() && controller.isRunning() && controller.getPhase() == "Manual")
-        enableRecursive(window.panelStatus, controller.isConnected())
-        enableRecursive(window.panelLog, controller.isConnected())
+        enableRecursive(window.btnConnect, backend.status().connected != true && backend.availablePorts().isNotEmpty())
+        enableRecursive(window.btnDisconnect, backend.status().connected == true)
+        enableRecursive(window.panelSettings, backend.status().connected == true && backend.status().running == true && backend.status().phase == "Manual")
+        enableRecursive(window.panelStatus, backend.status().connected == true)
+        enableRecursive(window.panelLog, backend.status().connected == true)
 
-        enableRecursive(window.btnStart, controller.isConnected() && !controller.isRunning())
-        enableRecursive(window.btnStop, controller.isRunning())
+        enableRecursive(window.btnStart, backend.status().connected == true && backend.status().running != true)
+        enableRecursive(window.btnStop, backend.status().running == true)
 
-        window.tvPhase.text = controller.getPhase() ?: "-"
-        window.tvTemperature.text = controller.getTemperature()?.let { String.format("%.1f", controller.getTemperature()) } ?: "-"
-        window.tvIntensity.text = controller.getIntensity()?.let { String.format("%.1f", (it * 100)) } ?: "-"
-        window.tvActiveIntensity.text = controller.getActiveIntensity()?.let { String.format("%.1f", (it * 100)) } ?: "-"
-        window.tvTargetTemperature.text = controller.getTargetTemperature() ?.toString() ?: "-"
-        window.tvTime.text = controller.getTime()?.let { (it / 1000).toString() } ?: "-"
+        window.tvPhase.text = backend.status().phase ?: "-"
+        window.tvTemperature.text = backend.status().temperature?.let { String.format("%.1f", backend.status().temperature) } ?: "-"
+        window.tvIntensity.text = backend.status().intensity?.let { String.format("%.1f", (it * 100)) } ?: "-"
+        window.tvActiveIntensity.text = backend.status().activeIntensity?.let { String.format("%.1f", (it * 100)) } ?: "-"
+        window.tvTargetTemperature.text = backend.status().targetTemperature ?.toString() ?: "-"
+        window.tvTime.text = backend.status().timeAlive?.let { (it / 1000).toString() } ?: "-"
 
-        window.tvTempOver.text = controller.getTimeSinceTempOver()?.let { (it / 1000).toString() } ?: "-"
-        window.tvCommandSince.text = controller.getTimeSinceCommand()?.let { (it / 1000).toString() } ?: "-"
+        window.tvTempOver.text = backend.status().timeSinceTempOver?.let { (it / 1000).toString() } ?: "-"
+        window.tvCommandSince.text = backend.status().timeSinceCommand?.let { (it / 1000).toString() } ?: "-"
 
-        controller.getTargetTemperature()?.let {
+        backend.status().targetTemperature?.let {
 
-            if(controller.isRunning() && (controller.getTemperature() ?: 0.0f) - 10 > it){
+            if(backend.status().running == true && (backend.status().targetTemperature ?: 0.0f) - 10 > it){
                 Toolkit.getDefaultToolkit().beep()
             }
 

@@ -51,7 +51,9 @@ class HttpApiServer(
                     "timeAlive" to controller.getTime(),
                     "timeSinceTempOver" to controller.getTimeSinceTempOver(),
                     "timeSinceCommand" to controller.getTimeSinceCommand(),
-                    "controllerTimeAlive" to controller.getControllerTimeAlive()
+                    "controllerTimeAlive" to controller.getControllerTimeAlive(),
+                    "profile" to controller.getProfile(),
+                    "finished" to controller.isFinished()
                 )
             )
         })

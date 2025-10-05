@@ -103,7 +103,15 @@ object StateLogger {
 }
 
 class Export(@SerializedName("data") val data : List<State>)
-class State(@SerializedName("time") val time : Long, @SerializedName("phase") val phase : String, @SerializedName("temperature") val temperature : Float, @SerializedName("activeIntensity") val activeIntensity : Float?, @SerializedName("targetTemperature") val targetTemperature : Float?, @SerializedName("intensity") val intensity : Float) {
+
+class State(
+    @SerializedName("time") val time : Long,
+    @SerializedName("phase") val phase : String,
+    @SerializedName("temperature") val temperature : Float,
+    @SerializedName("activeIntensity") val activeIntensity : Float?,
+    @SerializedName("targetTemperature") val targetTemperature : Float?,
+    @SerializedName("intensity") val intensity : Float
+) {
 
     val timeStr = DateTimeFormat.forPattern("HH:mm:ss").print(time)
 

@@ -259,6 +259,15 @@ class ReflowController(port : String) {
 
     }
 
+    fun isFinished(): Boolean? {
+        val profile = reflowProfile ?: return false
+        return currentReflowProfilePhase >= profile.getPhases().size
+    }
+
+    fun getProfile() : ReflowProfile? {
+        return reflowProfile
+    }
+
 }
 
 private class UpdateTask(private val controller : ReflowController) : TimerTask() {
