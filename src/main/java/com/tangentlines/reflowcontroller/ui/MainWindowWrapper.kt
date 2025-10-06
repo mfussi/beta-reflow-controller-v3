@@ -15,7 +15,9 @@ import java.awt.Toolkit
 import java.awt.event.ActionEvent
 import java.util.*
 import javax.swing.DefaultComboBoxModel
+import javax.swing.DefaultListCellRenderer
 import javax.swing.JFrame
+import javax.swing.JList
 import javax.swing.JMenu
 import javax.swing.JMenuBar
 import javax.swing.JMenuItem
@@ -30,7 +32,9 @@ class MainWindowWrapper(private val window : MainWindow, private val controller:
     private var baseTitle: String = "Reflow Controller — Local"
     
     private val backend = BackendWithEvents(LocalControllerBackend(controller))
-    
+    private val beeper = BeepNotifier()
+    private var lastProfileName: String? = null
+
     init {
 
         setWindowTitleLocal()
@@ -53,14 +57,12 @@ class MainWindowWrapper(private val window : MainWindow, private val controller:
         window.btnClear.addActionListener { executeAction("clear", ask = true) { backend.clearLogs() }}
 
         window.btnStart.addActionListener { executeAction("start") {
-
-            val profile = window.cbProfile.selectedItem
-            when(profile){
-                is String -> backend.manualStart(null)
-                is ReflowProfile -> backend.startProfileByName(profile.name)
+            when (val choice = window.cbProfile.selectedItem) {
+                is ProfileChoice.Manual -> backend.manualStart(null)
+                is ProfileChoice.Local  -> backend.startProfileInline(choice.profile)
+                is ProfileChoice.Remote -> backend.startProfileByName(choice.name)
                 else -> false
             }
-
         }}
 
         window.btnStop.addActionListener { executeAction("stop", ask = true) { backend.stop() }}
@@ -118,6 +120,7 @@ class MainWindowWrapper(private val window : MainWindow, private val controller:
                         JOptionPane.INFORMATION_MESSAGE
                     )
                     setWindowTitleRemote(host, port)
+                    updateProfiles()
                 }.isVisible = true
             }
         }
@@ -133,6 +136,7 @@ class MainWindowWrapper(private val window : MainWindow, private val controller:
                     JOptionPane.INFORMATION_MESSAGE
                 )
                 setWindowTitleLocal()
+                updateProfiles()
             }
         }
 
@@ -146,7 +150,13 @@ class MainWindowWrapper(private val window : MainWindow, private val controller:
 
     private fun phaseChanged(profile: ReflowProfile?, phase: String?, finished : Boolean?) {
 
+        if (profile?.name != null) lastProfileName = profile.name
+        window.cbProfile.isEnabled = backend.status().running != true
+
         if(finished == true){
+
+            val st = backend.status()
+            beeper.arm(st.temperature)
 
             Toolkit.getDefaultToolkit().beep()
             JOptionPane.showMessageDialog(window.root, "Your pcb is now finished. Please open the oven door and let the pcb cool down", "Finished - ${profile?.name}", JOptionPane.INFORMATION_MESSAGE)
@@ -202,13 +212,66 @@ class MainWindowWrapper(private val window : MainWindow, private val controller:
     }
 
     private fun updateProfiles() {
+        // capture current selection "key" to preserve choice when possible
+        fun keyOf(it: Any?): String = when (it) {
+            is ProfileChoice.Manual -> "MANUAL"
+            is ProfileChoice.Local  -> "LOCAL:${it.profile.name}"
+            is ProfileChoice.Remote -> "REMOTE:${it.name}"
+            else -> ""
+        }
+        val prevKey = keyOf(window.cbProfile.selectedItem)
 
-        val profiles = loadProfiles().toMutableList<Any>().apply {
-            add("Manual")
+        // local profiles
+        val locals = loadProfiles().map { ProfileChoice.Local(it) }
+
+        // remote profiles if we’re on a remote backend
+        val remotes = (backend.currentBackend() as? RemoteControllerBackend)
+            ?.listProfilesRemote()
+            ?.map { ProfileChoice.Remote(it.name) }
+            ?: emptyList()
+
+        // build items: Manual first, then locals, then remotes
+        val items = mutableListOf<Any>(ProfileChoice.Manual).apply {
+            addAll(locals)
+            addAll(remotes)
         }
 
-        window.cbProfile.model = DefaultComboBoxModel<Any>(profiles.toTypedArray())
+        window.cbProfile.model = DefaultComboBoxModel(items.toTypedArray())
 
+        // decide desired selection
+        val st = backend.status()
+        val desiredKey: String? = when {
+            st.running == true && (st.phase == "Manual" || st.mode?.equals("manual", ignoreCase = true) == true) ->
+                "MANUAL"
+            st.running == true && lastProfileName != null -> {
+                val name = lastProfileName!!
+                when {
+                    remotes.any { it.name == name } -> "REMOTE:$name"
+                    locals.any  { it.profile.name == name } -> "LOCAL:$name"
+                    else -> null
+                }
+            }
+            else -> null
+        }
+
+        // apply selection in priority: desiredKey (from status) -> prevKey (preserve) -> Manual
+        val targetKey = desiredKey ?: prevKey ?: "MANUAL"
+        val idx = items.indexOfFirst { keyOf(it) == targetKey }.let { if (it >= 0) it else 0 }
+        window.cbProfile.selectedIndex = idx
+
+        // nice renderer
+        window.cbProfile.renderer = object : DefaultListCellRenderer() {
+            override fun getListCellRendererComponent(list: JList<*>, value: Any?, index: Int, isSelected: Boolean, cellHasFocus: Boolean): java.awt.Component {
+                val c = super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus)
+                text = when (value) {
+                    is ProfileChoice.Manual -> "⛭  Manual"
+                    is ProfileChoice.Local  -> "💻 Local • ${value.profile.name}"
+                    is ProfileChoice.Remote -> "🌐 Remote • ${value.name}"
+                    else -> value?.toString() ?: "-"
+                }
+                return c
+            }
+        }
     }
 
     private fun applyTitleBadges(st: com.tangentlines.reflowcontroller.client.StatusDto? = null) {
@@ -222,6 +285,7 @@ class MainWindowWrapper(private val window : MainWindow, private val controller:
 
         val st = backend.status()
         applyTitleBadges(st)
+        window.cbProfile.isEnabled = backend.status().running != true
 
         enableRecursive(window.btnConnect, st.connected != true && backend.availablePorts().isNotEmpty())
         enableRecursive(window.btnDisconnect, st.connected == true)
@@ -242,13 +306,8 @@ class MainWindowWrapper(private val window : MainWindow, private val controller:
         window.tvTempOver.text = st.timeSinceTempOver?.let { (it / 1000).toString() } ?: "-"
         window.tvCommandSince.text = st.timeSinceCommand?.let { (it / 1000).toString() } ?: "-"
 
-        st.targetTemperature?.let {
-
-            if(st.running == true && (st.targetTemperature ?: 0.0f) - 10 > it){
-                Toolkit.getDefaultToolkit().beep()
-            }
-
-        }
+        if (st.profile?.name != null) lastProfileName = st.profile.name
+        beeper.onTick(st.temperature, st.targetTemperature)
 
     }
 
@@ -290,5 +349,81 @@ class MainWindowWrapper(private val window : MainWindow, private val controller:
 
     }
 
+}
+
+
+private class BeepNotifier(
+    private val beepIntervalMs: Long = 2000L,   // repeat rate while waiting for oven door
+    private val minDropPerTick: Float = 1.5f,   // °C drop between successive samples counts toward "cooling"
+    private val dropStreakToOpen: Int = 3,      // need this many successive drops
+    private val baselineDropToOpen: Float = 10.0f, // OR total drop from baseline of at least this
+    private val targetDeltaToOpen: Float = 15.0f   // OR 5°C below target
+) {
+    private var armed = false
+    private var baselineTemp: Float? = null
+    private var lastTemp: Float? = null
+    private var lastBeepAt: Long = 0L
+    private var dropStreak = 0
+
+    fun arm(currentTemp: Float?) {
+        armed = true
+        baselineTemp = currentTemp
+        lastTemp = currentTemp
+        dropStreak = 0
+        lastBeepAt = 0L
+        beep() // one immediate beep on finish
+    }
+
+    fun disarm() {
+        armed = false
+    }
+
+    fun onTick(currentTemp: Float?, targetTemp: Float?) {
+        if (!armed || currentTemp == null) return
+
+        // detect cooling (door opened) by slope or threshold
+        val lt = lastTemp
+        if (lt != null && currentTemp < lt - minDropPerTick) {
+            dropStreak += 1
+        } else {
+            dropStreak = 0
+        }
+
+        val baseline = baselineTemp ?: currentTemp
+        val cooling =
+            (targetTemp != null && currentTemp <= targetTemp - targetDeltaToOpen) ||
+                    (currentTemp <= baseline - baselineDropToOpen) ||
+                    (dropStreak >= dropStreakToOpen)
+
+        if (cooling) {
+            disarm()
+            return
+        }
+
+        val now = System.currentTimeMillis()
+        if (now - lastBeepAt >= beepIntervalMs) {
+            beep()
+            lastBeepAt = now
+        }
+
+        lastTemp = currentTemp
+    }
+
+    private fun beep() {
+        try { java.awt.Toolkit.getDefaultToolkit().beep() } catch (_: Exception) {}
+    }
+
+}
+
+private sealed class ProfileChoice {
+    object Manual : ProfileChoice()
+    data class Local(val profile: ReflowProfile) : ProfileChoice()
+    data class Remote(val name: String) : ProfileChoice()
+
+    override fun toString(): String = when (this) {
+        Manual -> "Manual"
+        is Local -> "Local: ${profile.name}"
+        is Remote -> "Remote: $name"
+    }
 }
 

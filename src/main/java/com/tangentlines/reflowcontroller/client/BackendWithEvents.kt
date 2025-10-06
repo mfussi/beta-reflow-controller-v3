@@ -70,6 +70,8 @@ class BackendWithEvents(
         scheduler.shutdownNow()
     }
 
+    fun currentBackend(): ControllerBackend = current.get()
+
     // --- polling ---
     private fun pollOnce() {
         pollStatus()

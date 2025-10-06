@@ -51,7 +51,9 @@ class RemoteControllerBackend(host: String, port: Int) : ControllerBackend {
             timeAlive = s.timeAlive,
             timeSinceTempOver = s.timeSinceTempOver,
             timeSinceCommand = s.timeSinceCommand,
-            controllerTimeAlive = s.controllerTimeAlive
+            controllerTimeAlive = s.controllerTimeAlive,
+            profile = s.profile,
+            finished = s.finished
         )
     }
 
@@ -62,4 +64,8 @@ class RemoteControllerBackend(host: String, port: Int) : ControllerBackend {
 
     override fun clearLogs(): Boolean =
         http.delete<AckResponse>("/api/logs").ok
+
+    fun listProfilesRemote(): List<ReflowProfile> =
+        http.get<ProfilesResponse>("/api/profiles").profiles
+
 }
