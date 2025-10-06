@@ -125,18 +125,16 @@ class MainWindowWrapper(private val window : MainWindow, private val controller:
         conn.add(useLocal)
         bar.add(conn)
 
-        // Attach the menubar to the window
         window.jMenuBar = bar
-        // If your codebase uses `menuBar` instead of `jMenuBar`, do this:
-        // this.menuBar = bar
+
     }
 
-    private fun phaseChanged(profile: String?, phase: String?, finished : Boolean?) {
+    private fun phaseChanged(profile: ReflowProfile?, phase: String?, finished : Boolean?) {
 
         if(finished == true){
 
-            Toolkit.getDefaultToolkit().beep();
-            JOptionPane.showMessageDialog(window.root, "Your pcb is now finished. Please open the oven door and let the pcb cool down", "Finished - ${profile}", JOptionPane.INFORMATION_MESSAGE)
+            Toolkit.getDefaultToolkit().beep()
+            JOptionPane.showMessageDialog(window.root, "Your pcb is now finished. Please open the oven door and let the pcb cool down", "Finished - ${profile?.name}", JOptionPane.INFORMATION_MESSAGE)
 
         }
 

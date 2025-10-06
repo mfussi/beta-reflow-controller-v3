@@ -1,101 +1,65 @@
 // File: src/main/java/com/tangentlines/reflowcontroller/client/RemoteControllerBackend.kt
 package com.tangentlines.reflowcontroller.client
 
-import com.google.gson.Gson
-import com.google.gson.JsonObject
-import com.tangentlines.reflowcontroller.log.LogEntry
-import com.tangentlines.reflowcontroller.log.State
+import com.tangentlines.reflowcontroller.api.*
 import com.tangentlines.reflowcontroller.reflow.profile.ReflowProfile
 
 class RemoteControllerBackend(host: String, port: Int) : ControllerBackend {
-    private val base = "http://$host:$port"
-    private val http = HttpJson(base)
-    private val gson = Gson()
+    private val http = HttpJson("http://$host:$port")
 
-    override fun availablePorts(): List<String> {
-        val json = http.get("/api/ports")
-        val arr = json.getAsJsonArray("ports") ?: return emptyList()
-        return arr.map { it.asString }
-    }
+    override fun availablePorts(): List<String> =
+        http.get<PortsResponse>("/api/ports").ports
 
-    override fun connect(portName: String): Boolean {
-        val json = http.post("/api/connect", mapOf("port" to portName))
-        return json.getAsJsonPrimitive("ok")?.asBoolean ?: false
-    }
+    override fun connect(portName: String): Boolean =
+        http.post<ConnectResponse>("/api/connect", ConnectRequest(portName)).ok
 
-    override fun disconnect(): Boolean {
-        val json = http.post("/api/disconnect", null)
-        return json.getAsJsonPrimitive("ok")?.asBoolean ?: false
-    }
+    override fun disconnect(): Boolean =
+        http.post<DisconnectResponse>("/api/disconnect", null).ok
 
-    override fun manualStart(temp: Float?, intensity: Float?): Boolean {
-        val payload = JsonObject().apply {
-            if (temp != null) addProperty("temp", temp)
-            if (intensity != null) addProperty("intensity", intensity)
-        }
-        val json = http.post("/api/manual/start", if (payload.entrySet().isEmpty()) null else payload)
-        return (json.get("mode")?.asString ?: "") == "manual"
-    }
+    override fun manualStart(temp: Float?, intensity: Float?): Boolean =
+        http.post<ManualStartResponse>("/api/manual/start", ManualStartRequest(temp, intensity)).mode == "manual"
 
-    override fun manualSet(temp: Float, intensity: Float): Boolean {
-        val json = http.post("/api/manual/set", mapOf("temp" to temp, "intensity" to intensity))
-        return json.getAsJsonPrimitive("ok")?.asBoolean ?: false
-    }
+    override fun manualSet(temp: Float, intensity: Float): Boolean =
+        http.post<ManualSetResponse>("/api/manual/set", ManualSetRequest(temp, intensity)).ok
 
-    override fun manualStop(): Boolean {
-        val json = http.post("/api/manual/stop", null)
-        return (json.get("mode")?.asString ?: "") != "manual"
-    }
+    override fun manualStop(): Boolean =
+        http.post<ManualStopResponse>("/api/manual/stop", null).mode != "manual"
 
-    override fun startProfileByName(profileName: String): Boolean {
-        val json = http.post("/api/start", mapOf("profileName" to profileName))
-        return json.getAsJsonPrimitive("ok")?.asBoolean ?: false
-    }
+    override fun startProfileByName(profileName: String): Boolean =
+        http.post<StartResponse>("/api/start", StartRequest(profileName, null)).ok
 
-    override fun startProfileInline(profile: ReflowProfile): Boolean {
-        val json = http.post("/api/start", mapOf("profile" to gson.toJsonTree(profile)))
-        return json.getAsJsonPrimitive("ok")?.asBoolean ?: false
-    }
+    override fun startProfileInline(profile: ReflowProfile): Boolean =
+        http.post<StartResponse>("/api/start", StartRequest(null, profile)).ok
 
-    override fun stop(): Boolean {
-        val json = http.post("/api/stop", null)
-        return json.getAsJsonPrimitive("ok")?.asBoolean ?: false
-    }
+    override fun stop(): Boolean =
+        http.post<StopResponse>("/api/stop", null).ok
 
-    override fun setTargetTemperature(intensity: Float, temp: Float): Boolean {
-        val json = http.post("/api/target", mapOf("temp" to temp, "intensity" to intensity))
-        return json.getAsJsonPrimitive("ok")?.asBoolean ?: false
-    }
+    override fun setTargetTemperature(intensity: Float, temp: Float): Boolean =
+        http.post<TargetResponse>("/api/target", TargetRequest(temp, intensity)).ok
 
     override fun status(): StatusDto {
-        val json = http.get("/api/status")
+        val s = http.get<com.tangentlines.reflowcontroller.api.StatusDto>("/api/status")
         return StatusDto(
-            connected = json.getAsJsonPrimitive("connected")?.asBoolean,
-            running = json.getAsJsonPrimitive("running")?.asBoolean,
-            phase = json.getAsJsonPrimitive("phase")?.asString,
-            mode = json.getAsJsonPrimitive("mode")?.asString,
-            temperature = json.getAsJsonPrimitive("temperature")?.asFloat,
-            targetTemperature = json.getAsJsonPrimitive("targetTemperature")?.asFloat,
-            intensity = json.getAsJsonPrimitive("intensity")?.asFloat,
-            activeIntensity = json.getAsJsonPrimitive("activeIntensity")?.asFloat,
-            timeAlive = json.getAsJsonPrimitive("timeAlive")?.asLong,
-            timeSinceTempOver = json.getAsJsonPrimitive("timeSinceTempOver")?.asLong,
-            timeSinceCommand = json.getAsJsonPrimitive("timeSinceCommand")?.asLong,
-            controllerTimeAlive = json.getAsJsonPrimitive("controllerTimeAlive")?.asInt,
-            finished = json.getAsJsonPrimitive("finished")?.asBoolean,
-            profile = json.getAsJsonPrimitive("profile")?.asString
+            connected = s.connected,
+            running = s.running,
+            phase = s.phase,
+            mode = s.mode,
+            temperature = s.temperature,
+            targetTemperature = s.targetTemperature,
+            intensity = s.intensity,
+            activeIntensity = s.activeIntensity,
+            timeAlive = s.timeAlive,
+            timeSinceTempOver = s.timeSinceTempOver,
+            timeSinceCommand = s.timeSinceCommand,
+            controllerTimeAlive = s.controllerTimeAlive
         )
     }
 
     override fun logs(): LogsDto {
-        val json = http.get("/api/logs")
-        val messages = json.getAsJsonArray("messages")?.map { it.asJsonObject }?.map { gson.fromJson<LogEntry>(it, LogEntry::class.java) } ?: emptyList()
-        val states = json.getAsJsonArray("states")?.map { it.asJsonObject }?.map { gson.fromJson<State>(it, State::class.java) } ?: emptyList()
-        return LogsDto(messages, states)
+        val dto = http.get<LogsCombinedResponse>("/api/logs")
+        return LogsDto(messages = dto.messages, states = dto.states)
     }
 
-    override fun clearLogs(): Boolean {
-        val json = http.delete("/api/logs")
-        return json.getAsJsonPrimitive("ok")?.asBoolean ?: false
-    }
+    override fun clearLogs(): Boolean =
+        http.delete<AckResponse>("/api/logs").ok
 }

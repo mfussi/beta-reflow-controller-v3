@@ -134,8 +134,8 @@ class ApplicationController() {
         return reflow?.getPhase()
     }
 
-    fun getProfile(): String? {
-        return reflow?.getProfile()?.name
+    fun getProfile(): ReflowProfile? {
+        return reflow?.getProfile()
     }
 
     fun isFinished(): Boolean? {

@@ -10,7 +10,7 @@ class BackendWithEvents(initial: ControllerBackend, private val pollMs: Long = 5
     private val current = AtomicReference(initial)
 
     val onStateChanged = Event<StatusDto>(onEdt = true)
-    val onPhaseChanged = Event<Triple<String?, String?, Boolean?>?>(onEdt = true)
+    val onPhaseChanged = Event<Triple<ReflowProfile?, String?, Boolean?>?>(onEdt = true)
 
     @Volatile private var lastStatus: StatusDto? = null
 
