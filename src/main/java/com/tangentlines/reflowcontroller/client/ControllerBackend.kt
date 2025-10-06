@@ -51,7 +51,8 @@ data class StatusDto(
     val profile: ReflowProfile? = null,
     val finished: Boolean? = null,
     val profileSource: String?,
-    val profileClient: String?
+    val profileClient: String?,
+    val port: String?
 )
 
 data class LogsDto(

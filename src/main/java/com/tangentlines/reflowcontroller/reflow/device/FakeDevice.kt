@@ -8,7 +8,7 @@ private const val HEATING_SPEED = 0.17f          // 3 C per second
 private const val INC = 0.3f                     // heating adaption speed
 private const val COOLING = 0.05f                // 0.25 C per second
 
-class FakeDevice : AbstractDevice() {
+class FakeDevice(private val port : String) : AbstractDevice() {
 
     private var isConnected: Boolean = false
     private var isStarted: Boolean = false
@@ -18,6 +18,10 @@ class FakeDevice : AbstractDevice() {
     private var currentPulse: Float = 0.0f
 
     private var updateTimer : Timer? = null
+
+    override fun getPort(): String {
+        return port
+    }
 
     override fun connect(): Boolean {
 

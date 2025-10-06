@@ -60,7 +60,8 @@ class LocalControllerBackend(private val controller: ApplicationController) : Co
         finished = controller.isFinished(),
         profile = controller.getProfile(),
         profileSource = "local",
-        profileClient = "local"
+        profileClient = "local",
+        port = controller.getPort()
     )
 
     override fun logs(): LogsDto = LogsDto(

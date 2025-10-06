@@ -23,6 +23,10 @@ class BetaLayoutDevice(private val port : String) : AbstractDevice() {
     private var timer : Timer? = null
     private var lastShot : Long = 0L
 
+    override fun getPort(): String {
+        return port
+    }
+
     init {
         connector.onNewLine = { data -> Thread(Runnable { newLine(data) }).start() }
     }

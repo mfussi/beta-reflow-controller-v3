@@ -76,14 +76,26 @@ class HttpApiServer(
         server.createContext("/api/connect", handler { ex ->
             ex.requireMethod("POST")
             val dto = ex.readDto(ConnectRequest::class.java)
-            val success = ctl("connect") { controller.connect(dto.port) }
-            ok(ConnectResponse(success, safe(false) { controller.isConnected() }))
+            val result = runCatching { controller.connect(dto.port) }
+            val ok = result.getOrDefault(false)
+
+            if (!ok || result.isFailure) {
+                runCatching { controller.disconnect() }
+                val err = result.exceptionOrNull()
+                val className = err?.javaClass?.name ?: ""
+                val msg = err?.message ?: "connect failed"
+                if (className == "gnu.io.PortInUseException") throw ApiError("Port in use: ${dto.port}", 409)
+                throw BadRequest("Connect failed on ${dto.port}: $msg")
+            }
+
+            ok(ConnectResponse(true, safe(false) { controller.isConnected() }, controller.getPort()))
         })
 
         server.createContext("/api/disconnect", handler { ex ->
             ex.requireMethod("POST")
+            val port = controller.getPort()
             val success = ctl("disconnect") { controller.disconnect() }
-            ok(DisconnectResponse(success, safe(false) { controller.isConnected() }))
+            ok(DisconnectResponse(success, safe(false) { controller.isConnected() }, port))
         })
 
         // ---- Target
@@ -274,8 +286,9 @@ class HttpApiServer(
             controllerTimeAlive = safe(0L) { controller.getControllerTimeAlive() },
             profile             = safe(null as ReflowProfile?) { controller.getProfile() },
             finished            = safe(false) { controller.isFinished() },
-            profileSource       = if (running) lastProfileSource else null,   // NEW
-            profileClient       = if (running) lastProfileClient else null    // NEW
+            profileSource       = if (running) lastProfileSource else null,
+            profileClient       = if (running) lastProfileClient else null,
+            port                = controller.getPort()
         )
     }
 

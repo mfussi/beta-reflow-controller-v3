@@ -55,7 +55,8 @@ class RemoteControllerBackend(host: String, port: Int) : ControllerBackend {
             profile = s.profile,
             finished = s.finished,
             profileSource = s.profileSource,
-            profileClient = s.profileClient
+            profileClient = s.profileClient,
+            port = s.port
         )
     }
 

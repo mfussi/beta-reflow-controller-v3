@@ -31,7 +31,7 @@ class ReflowController(port : String) {
     private var currentReflowProfilePhase : Int = -1
 
     private val device : Device = when(port) {
-        FAKE_IDENTIFIER -> FakeDevice()
+        FAKE_IDENTIFIER -> FakeDevice(FAKE_IDENTIFIER)
         else -> BetaLayoutDevice(port)
     }
 
@@ -266,6 +266,10 @@ class ReflowController(port : String) {
 
     fun getProfile() : ReflowProfile? {
         return reflowProfile
+    }
+
+    fun getPort(): String? {
+        return this.device.getPort()
     }
 
 }

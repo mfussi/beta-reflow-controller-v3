@@ -47,7 +47,8 @@ data class StatusDto(
     @SerializedName("profile") val profile: ReflowProfile?,
     @SerializedName("finished") val finished: Boolean?,
     @SerializedName("profileSource") val profileSource: String? = null,
-    @SerializedName("profileClient") val profileClient: String? = null
+    @SerializedName("profileClient") val profileClient: String? = null,
+    @SerializedName("port") val port: String? = null
 )
 
 data class PortsResponse(@SerializedName("ports") val ports: List<String>)
@@ -63,10 +64,16 @@ data class LogsCombinedResponse(
     @SerializedName("states") val states: List<State>
 )
 
-data class ConnectResponse(@SerializedName("ok") val ok: Boolean, @SerializedName("connected") val connected: Boolean)
+data class ConnectResponse(
+    @SerializedName("ok") val ok: Boolean,
+    @SerializedName("connected") val connected: Boolean,
+    @SerializedName("port") val port: String? = null
+)
+
 data class DisconnectResponse(
     @SerializedName("ok") val ok: Boolean,
-    @SerializedName("connected") val connected: Boolean
+    @SerializedName("connected") val connected: Boolean,
+    @SerializedName("port") val port: String? = null
 )
 
 data class TargetResponse(

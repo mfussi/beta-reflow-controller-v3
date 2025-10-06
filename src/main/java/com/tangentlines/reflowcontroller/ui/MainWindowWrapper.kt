@@ -71,7 +71,7 @@ class MainWindowWrapper(private val window : MainWindow, private val controller:
         window.btnStop.addActionListener { executeAction("stop", ask = true) { backend.stop() }}
 
         window.btnConnect.addActionListener { executeAction("connect") { backend.connect(window.txtPort.selectedItem as String) } }
-        window.btnDisconnect.addActionListener { executeAction("disconnect", ask = true) { backend.disconnect() } }
+        window.btnDisconnect.addActionListener { executeAction("disconnect", ask = true) { backend.disconnect(); updatePorts(); true } }
 
         setSliderTemperatureText()
         setSliderIntensityText()
@@ -124,6 +124,7 @@ class MainWindowWrapper(private val window : MainWindow, private val controller:
                     )
                     setWindowTitleRemote(host, port)
                     updateProfiles()
+                    updatePorts()
                 }.isVisible = true
             }
         }
@@ -140,6 +141,7 @@ class MainWindowWrapper(private val window : MainWindow, private val controller:
                 )
                 setWindowTitleLocal()
                 updateProfiles()
+                updatePorts()
             }
         }
 
@@ -193,7 +195,7 @@ class MainWindowWrapper(private val window : MainWindow, private val controller:
 
                 when (value) {
                     is ProfileChoice.Manual -> {
-                        text = "⚙️ Manual"
+                        text = "⚙ Manual"
                     }
                     is ProfileChoice.Local -> {
                         text = "💻  ${value.profile.name}"
@@ -248,7 +250,28 @@ class MainWindowWrapper(private val window : MainWindow, private val controller:
     }
 
     private fun updatePorts() {
-        window.txtPort.model = DefaultComboBoxModel<Any>(backend.availablePorts().toTypedArray())
+        val ports = backend.availablePorts()
+        val st = backend.status()  // single fetch
+
+        // rebuild model
+        window.txtPort.model = DefaultComboBoxModel<Any>(ports.toTypedArray())
+
+        // choose desired selection:
+        // 1) server-reported current port
+        // 2) keep previous selection if still present
+        // 3) first available
+        val serverPort = st.port
+        val prev = window.txtPort.selectedItem as? String
+        val desired = when {
+            serverPort != null && ports.contains(serverPort) -> serverPort
+            prev != null && ports.contains(prev) -> prev
+            ports.isNotEmpty() -> ports.first()
+            else -> null
+        }
+        if (desired != null) window.txtPort.selectedItem = desired
+
+        // optional: lock port selection while connected
+        window.txtPort.isEnabled = st.connected != true
     }
 
     private fun updateProfiles() {

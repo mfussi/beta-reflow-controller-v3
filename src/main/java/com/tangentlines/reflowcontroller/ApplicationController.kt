@@ -142,4 +142,8 @@ class ApplicationController() {
         return reflow?.isFinished()
     }
 
+    fun getPort(): String? {
+        return reflow?.getPort()
+    }
+
 }
