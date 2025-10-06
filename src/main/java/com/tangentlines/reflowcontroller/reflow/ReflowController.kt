@@ -239,9 +239,7 @@ class ReflowController(port : String) {
                 // enforce MAX temperature with hysteresis
                 val out = when {
                     currentTemp >= maxT + TEMP_HYSTERESIS_UP   -> 0.0f
-                    currentTemp >= maxT - TEMP_HYSTERESIS_DOWN -> min(lastPulseSet, (cmd * 0.4f).coerceAtMost(0.25f))
-                    // near threshold but not yet at max: allow some moderation to reduce ringing
-                    currentTemp >= thr - TEMP_HYSTERESIS_DOWN  -> min(lastPulseSet, (cmd * 0.6f).coerceAtMost(0.35f))
+                    currentTemp >= maxT - TEMP_HYSTERESIS_DOWN -> min(lastPulseSet, (cmd * 0.3f).coerceAtMost(0.25f))
                     else                                       -> cmd
                 }
 
