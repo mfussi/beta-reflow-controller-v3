@@ -4,7 +4,7 @@ import java.util.*
 import kotlin.math.max
 import kotlin.math.min
 
-private const val SPEED_FACTOR = 10.0f                                  // 1.0f -> for normal speed; > 1.0f - speed run
+private const val SPEED_FACTOR = 2.0f                                  // 1.0f -> for normal speed; > 1.0f - speed run
 
 private const val PERIOD = 1000L
 private const val HEATING_SPEED = (0.17f * SPEED_FACTOR)               // 3 C per second

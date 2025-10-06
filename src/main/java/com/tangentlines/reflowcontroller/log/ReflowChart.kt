@@ -41,25 +41,21 @@ class ReflowChart(private val backend: BackendWithEvents) {
 
             override fun windowClosed(e: WindowEvent?) {
                 super.windowClosed(e)
-                backend.onLogsChanged.remove { onNewLogData }
+                backend.onStatesChanged.remove(listener)
             }
 
         })
 
-        update()
-        backend.onLogsChanged.add { onNewLogData }
+        update(backend.logs().states)
+        backend.onStatesChanged.add(listener)
 
         return true
 
     }
 
-    private val onNewLogData : (() -> Unit) = {
-        newData.invoke()
-    }
+    private val listener : (List<State>) -> Unit = { update(it) }
 
-    private fun update(){
-
-        val entries = backend.logs().states
+    private fun update(entries : List<State>){
 
         SwingUtilities.invokeLater {
 
@@ -137,7 +133,5 @@ class ReflowChart(private val backend: BackendWithEvents) {
         }
 
     }
-
-    private val newData : (() -> Unit) = { update() }
 
 }
