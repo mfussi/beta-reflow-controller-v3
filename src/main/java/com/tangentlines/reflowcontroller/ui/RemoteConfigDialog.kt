@@ -91,7 +91,7 @@ class RemoteConfigDialog(
         setLocationRelativeTo(parent)
 
         // Auto scan on open for convenience
-        SwingUtilities.invokeLater { onScan(ActionEvent(this, 0, "auto")) }
+        invokeLater { onScan(ActionEvent(this, 0, "auto")) }
     }
 
     private fun labeled(label: String, field: JComponent): JPanel =
@@ -176,7 +176,7 @@ class RemoteConfigDialog(
                 val p = DatagramPacket(buf, buf.size)
                 socket.receive(p)
                 val text = String(p.data, p.offset, p.length, StandardCharsets.UTF_8).trim()
-                // Expected: {"name":"…","port":8081,"requiresAuth":true}
+                // Expected: {"name":"…","port":8090,"requiresAuth":true}
                 val (name, srvPort, auth) = parseHelloJson(text) ?: continue
                 val host = p.address.hostAddress
                 results.putIfAbsent(host, DiscoveredServer(name, host, srvPort, auth))
@@ -206,7 +206,7 @@ class RemoteConfigDialog(
     private fun parseHelloJson(s: String): Triple<String, Int, Boolean>? = try {
         val obj = com.google.gson.JsonParser.parseString(s).asJsonObject
         val name = obj.get("name")?.asString
-        val port = obj.get("port")?.asInt ?: 8080
+        val port = obj.get("port")?.asInt ?: 8090
         val requiresAuth = obj.get("requiresAuth")?.asBoolean == true
         name?.let { Triple(name, port, requiresAuth) }
     } catch (_: Exception) { null }
