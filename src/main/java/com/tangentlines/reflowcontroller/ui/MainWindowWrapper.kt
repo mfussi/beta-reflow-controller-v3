@@ -115,12 +115,6 @@ class MainWindowWrapper(private val window : MainWindow, private val controller:
             addActionListener { _: ActionEvent ->
                 RemoteConfigDialog(window, port) { host ->
                     backend.swap(RemoteControllerBackend(host, port))
-                    JOptionPane.showMessageDialog(
-                        window,
-                        "Remote API set to http://$host:$port",
-                        "Remote",
-                        JOptionPane.INFORMATION_MESSAGE
-                    )
                     setWindowTitleRemote(host, port)
                     updateProfiles()
                     updatePorts()
@@ -132,12 +126,6 @@ class MainWindowWrapper(private val window : MainWindow, private val controller:
         val useLocal = JMenuItem("Use Local Controller").apply {
             addActionListener {
                 backend.swap(LocalControllerBackend(controller))
-                JOptionPane.showMessageDialog(
-                    window,
-                    "Switched to local controller",
-                    "Local",
-                    JOptionPane.INFORMATION_MESSAGE
-                )
                 setWindowTitleLocal()
                 updateProfiles()
                 updatePorts()
@@ -344,7 +332,12 @@ class MainWindowWrapper(private val window : MainWindow, private val controller:
             null -> "-"
         }
 
-        window.tvNextPhaseIn.text = UiFormat.durationPair(st.nextPhaseIn?.let { it / 1000 }, st.phaseTime?.let { it / 1000 }, postFix = "($phaseTypeStr)")
+        if(st.profile != null) {
+            window.tvNextPhaseIn.text = UiFormat.durationPair(st.nextPhaseIn?.let { it / 1000 }, st.phaseTime?.let { it / 1000 }, postFix = "($phaseTypeStr)")
+        } else {
+            window.tvNextPhaseIn.text = "-"
+        }
+
         window.tvTempOver.text = UiFormat.duration(st.timeSinceTempOver?.let { (it / 1000) })
         window.tvCommandSince.text = UiFormat.duration(st.timeSinceCommand?.let { (it / 1000) })
 
@@ -501,6 +494,11 @@ private fun dynamicPhaseTrailHtml(
     current: Phase?,
     profile: ReflowProfile?
 ): String {
+
+    if(profile == null) {
+        return "<html>Manual</html>"
+    }
+
     val base = mutableListOf("Idle")
     val names = profile?.phases?.map { it.name.ifBlank { "phase" } } ?: listOf("Preheat","Soak","Reflow")
     base += names

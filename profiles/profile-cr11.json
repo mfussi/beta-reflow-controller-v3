@@ -2,13 +2,6 @@
   "name": "CR11",
   "phases": [
     {
-      "name": "Start",
-      "target_temperature": 80.0,
-      "intensity": 1.0,
-      "hold_for": 0,
-      "time": 0
-    },
-    {
       "name": "Preheat",
       "target_temperature": 100.0,
       "intensity": 1.0,

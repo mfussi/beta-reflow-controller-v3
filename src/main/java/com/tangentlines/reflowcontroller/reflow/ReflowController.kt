@@ -23,6 +23,8 @@ class ReflowController(port : String) {
     private var targetTemperature : Float? = null
     private var lastCommand : Long? = null
     private var connectTime : Long? = null
+    private var startTime : Long? = null
+    private var stopTime : Long? = null
     private var temOverSince : Long? = null
 
     private var currentTemperature : Float = -1.0f
@@ -88,7 +90,7 @@ class ReflowController(port : String) {
     }
 
     fun getTimeAlive() : Long? {
-        return connectTime?.let { System.currentTimeMillis() - it }
+        return startTime?.let { (stopTime ?: System.currentTimeMillis()) - it }
     }
 
     private fun goToNextPhase(profile : ReflowProfile){
@@ -195,17 +197,29 @@ class ReflowController(port : String) {
 
     }
 
+    private var started : Boolean = false
+    private var updateTask: UpdateTask? = null
+
     fun startService() : Boolean {
 
-        val success = device.start()
-        if(success){
+        if(!started) {
+            val success = device.start()
+            if (success) {
 
-            this.currentTemperature = device.getTemperature()
+                this.startTime = System.currentTimeMillis()
+                this.stopTime = null
 
-            timer = Timer()
-            timer!!.schedule(UpdateTask(this), 0, UPDATE_INTERVAL)
-            return true
+                this.currentTemperature = device.getTemperature()
 
+                updateTask = UpdateTask(this)
+
+                timer = Timer()
+                timer!!.schedule(updateTask!!, 0, UPDATE_INTERVAL)
+
+                started = true
+                return true
+
+            }
         }
 
         return false
@@ -214,11 +228,21 @@ class ReflowController(port : String) {
 
     fun stopService() : Boolean {
 
-        val success = device.stop()
-        if(success){
-            timer!!.cancel()
-            timer = null
-            return true
+        if(started) {
+            val success = device.stop()
+            if (success) {
+
+                updateTask?.isStopped = true
+                updateTask = null
+
+                timer!!.cancel()
+                timer = null
+
+                stopTime = System.currentTimeMillis()
+                started = false
+                return true
+
+            }
         }
 
         return false
@@ -226,11 +250,11 @@ class ReflowController(port : String) {
     }
 
     fun getTimeSinceTempOver(): Long? {
-        return temOverSince?.let { System.currentTimeMillis() - it }
+        return if(started) temOverSince?.let { System.currentTimeMillis() - it } else null
     }
 
     fun getTimeSinceCommand(): Long? {
-        return lastCommand?.let { System.currentTimeMillis() - it }
+        return if(started) lastCommand?.let { System.currentTimeMillis() - it } else null
     }
 
     fun getControllerTimeAlive() : Long? {

@@ -124,6 +124,8 @@ class ApplicationController() {
     }
 
     fun start(profile : ReflowProfile?): Boolean {
+        Logger.clear()
+        StateLogger.clear()
         reflow?.setProfile(profile)
         return reflow?.startService() ?: false
 
