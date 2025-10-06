@@ -2,15 +2,11 @@ package com.tangentlines.reflowcontroller.ui
 
 import com.tangentlines.reflowcontroller.ApplicationController
 import com.tangentlines.reflowcontroller.client.BackendWithEvents
-import com.tangentlines.reflowcontroller.client.ControllerBackend
-import com.tangentlines.reflowcontroller.client.Event
 import com.tangentlines.reflowcontroller.client.LocalControllerBackend
 import com.tangentlines.reflowcontroller.client.RemoteControllerBackend
-import com.tangentlines.reflowcontroller.client.StatusDto
-import com.tangentlines.reflowcontroller.log.Logger
+import com.tangentlines.reflowcontroller.log.LogEntry
 import com.tangentlines.reflowcontroller.log.ReflowChart
-import com.tangentlines.reflowcontroller.log.StateLogger
-import com.tangentlines.reflowcontroller.reflow.profile.Phase
+import com.tangentlines.reflowcontroller.log.export
 import com.tangentlines.reflowcontroller.reflow.profile.ReflowProfile
 import com.tangentlines.reflowcontroller.reflow.profile.loadProfiles
 import org.joda.time.format.DateTimeFormat
@@ -24,29 +20,36 @@ import javax.swing.JMenu
 import javax.swing.JMenuBar
 import javax.swing.JMenuItem
 import javax.swing.JOptionPane
+import javax.swing.JScrollPane
+import javax.swing.SwingUtilities
+import javax.swing.text.DefaultCaret
+import javax.swing.text.JTextComponent
 
 class MainWindowWrapper(private val window : MainWindow, private val controller: ApplicationController) {
 
+    private var baseTitle: String = "Reflow Controller — Local"
+    
     private val backend = BackendWithEvents(LocalControllerBackend(controller))
     
     init {
 
-        window.title = "Reflow Controller"
+        setWindowTitleLocal()
         window.defaultCloseOperation = JFrame.EXIT_ON_CLOSE
 
+        installLogAreaBehavior()
         setupMenu()
 
         backend.onStateChanged.add { updateUI() }
         backend.onPhaseChanged.add { phaseChanged(it?.first, it?.second, it?.third) }
+        backend.onLogsChanged.add { updateLogs(it) }
 
         window.btnRefresh.addActionListener { updatePorts() }
+
         updatePorts()
         updateProfiles()
 
-        Logger.listeners.add(::updateLogs)
-
-        window.btnChart.addActionListener { executeAction("chart") { ReflowChart().show(window.root) }}
-        window.btnExport.addActionListener { executeAction("export", success = true) { StateLogger.export() }}
+        window.btnChart.addActionListener { executeAction("chart") { ReflowChart(backend).show(window.root) }}
+        window.btnExport.addActionListener { executeAction("export", success = true) { export(backend.logs().states) }}
         window.btnClear.addActionListener { executeAction("clear", ask = true) { backend.clearLogs() }}
 
         window.btnStart.addActionListener { executeAction("start") {
@@ -89,6 +92,16 @@ class MainWindowWrapper(private val window : MainWindow, private val controller:
 
     }
 
+    private fun setWindowTitleLocal() {
+        window.title = "Reflow Controller — Local"
+        applyTitleBadges()
+    }
+
+    private fun setWindowTitleRemote(host: String, port: Int) {
+        window.title = "Reflow Controller — Remote ($host:$port)"
+        applyTitleBadges()
+    }
+
     private fun setupMenu() {
         val bar = JMenuBar()
         val conn = JMenu("Connection")
@@ -104,6 +117,7 @@ class MainWindowWrapper(private val window : MainWindow, private val controller:
                         "Remote",
                         JOptionPane.INFORMATION_MESSAGE
                     )
+                    setWindowTitleRemote(host, port)
                 }.isVisible = true
             }
         }
@@ -118,6 +132,7 @@ class MainWindowWrapper(private val window : MainWindow, private val controller:
                     "Local",
                     JOptionPane.INFORMATION_MESSAGE
                 )
+                setWindowTitleLocal()
             }
         }
 
@@ -152,8 +167,34 @@ class MainWindowWrapper(private val window : MainWindow, private val controller:
 
     val format = DateTimeFormat.mediumTime().withLocale(Locale.GERMAN)
 
-    private fun updateLogs(){
-        window.txtLog.text = Logger.getMessages().filterNotNull().reversed().joinToString("\n") { "${format.print(it.time)}: ${it.message}" }
+    // call this once during UI setup
+    private fun installLogAreaBehavior() {
+        val caret = (window.txtLog.caret as DefaultCaret)
+        caret.updatePolicy = DefaultCaret.NEVER_UPDATE
+    }
+
+    // helper: are we scrolled to the very top?
+    private fun isAtTop(comp: JTextComponent): Boolean {
+        val sp = SwingUtilities.getAncestorOfClass(JScrollPane::class.java, comp) as? JScrollPane ?: return true
+        val vbar = sp.verticalScrollBar
+        return vbar.value == vbar.minimum
+    }
+
+    // your update method, now top-sticky
+    private fun updateLogs(entries: List<LogEntry>) {
+        val area = window.txtLog
+        val wasAtTop = isAtTop(area)
+
+        area.text = entries.asReversed().joinToString("\n") { "${format.print(it.time)}: ${it.message}" }
+
+        if (wasAtTop) {
+            // stay pinned to top after content change
+            SwingUtilities.invokeLater {
+                area.caretPosition = 0
+                val sp = SwingUtilities.getAncestorOfClass(JScrollPane::class.java, area) as? JScrollPane
+                sp?.verticalScrollBar?.value = sp?.verticalScrollBar?.minimum ?: 0
+            }
+        }
     }
 
     private fun updatePorts() {
@@ -170,30 +211,40 @@ class MainWindowWrapper(private val window : MainWindow, private val controller:
 
     }
 
+    private fun applyTitleBadges(st: com.tangentlines.reflowcontroller.client.StatusDto? = null) {
+        val s = st ?: kotlin.runCatching { backend.status() }.getOrNull()
+        val comBadge = if (s?.connected == true) "COM ●" else "COM ○"
+        val runBadge = if (s?.running == true)  "RUN ●" else "RUN ○"
+        window.title = "$baseTitle — [$comBadge] [$runBadge]"
+    }
+
     private fun updateUI() {
 
-        enableRecursive(window.btnConnect, backend.status().connected != true && backend.availablePorts().isNotEmpty())
-        enableRecursive(window.btnDisconnect, backend.status().connected == true)
-        enableRecursive(window.panelSettings, backend.status().connected == true && backend.status().running == true && backend.status().phase == "Manual")
-        enableRecursive(window.panelStatus, backend.status().connected == true)
-        enableRecursive(window.panelLog, backend.status().connected == true)
+        val st = backend.status()
+        applyTitleBadges(st)
 
-        enableRecursive(window.btnStart, backend.status().connected == true && backend.status().running != true)
-        enableRecursive(window.btnStop, backend.status().running == true)
+        enableRecursive(window.btnConnect, st.connected != true && backend.availablePorts().isNotEmpty())
+        enableRecursive(window.btnDisconnect, st.connected == true)
+        enableRecursive(window.panelSettings, st.connected == true && st.running == true && st.phase == "Manual")
+        enableRecursive(window.panelStatus, st.connected == true)
+        enableRecursive(window.panelLog, st.connected == true)
 
-        window.tvPhase.text = backend.status().phase ?: "-"
-        window.tvTemperature.text = backend.status().temperature?.let { String.format("%.1f", backend.status().temperature) } ?: "-"
-        window.tvIntensity.text = backend.status().intensity?.let { String.format("%.1f", (it * 100)) } ?: "-"
-        window.tvActiveIntensity.text = backend.status().activeIntensity?.let { String.format("%.1f", (it * 100)) } ?: "-"
-        window.tvTargetTemperature.text = backend.status().targetTemperature ?.toString() ?: "-"
-        window.tvTime.text = backend.status().timeAlive?.let { (it / 1000).toString() } ?: "-"
+        enableRecursive(window.btnStart, st.connected == true && st.running != true)
+        enableRecursive(window.btnStop, st.running == true)
 
-        window.tvTempOver.text = backend.status().timeSinceTempOver?.let { (it / 1000).toString() } ?: "-"
-        window.tvCommandSince.text = backend.status().timeSinceCommand?.let { (it / 1000).toString() } ?: "-"
+        window.tvPhase.text = st.phase ?: "-"
+        window.tvTemperature.text = st.temperature?.let { String.format("%.1f", st.temperature) } ?: "-"
+        window.tvIntensity.text = st.intensity?.let { String.format("%.1f", (it * 100)) } ?: "-"
+        window.tvActiveIntensity.text = st.activeIntensity?.let { String.format("%.1f", (it * 100)) } ?: "-"
+        window.tvTargetTemperature.text = st.targetTemperature ?.toString() ?: "-"
+        window.tvTime.text = st.timeAlive?.let { (it / 1000).toString() } ?: "-"
 
-        backend.status().targetTemperature?.let {
+        window.tvTempOver.text = st.timeSinceTempOver?.let { (it / 1000).toString() } ?: "-"
+        window.tvCommandSince.text = st.timeSinceCommand?.let { (it / 1000).toString() } ?: "-"
 
-            if(backend.status().running == true && (backend.status().targetTemperature ?: 0.0f) - 10 > it){
+        st.targetTemperature?.let {
+
+            if(st.running == true && (st.targetTemperature ?: 0.0f) - 10 > it){
                 Toolkit.getDefaultToolkit().beep()
             }
 

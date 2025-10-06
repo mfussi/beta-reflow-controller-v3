@@ -1,7 +1,8 @@
 package com.tangentlines.reflowcontroller.log
 
+import com.tangentlines.reflowcontroller.client.BackendWithEvents
+import com.tangentlines.reflowcontroller.client.ControllerBackend
 import org.knowm.xchart.*
-import org.knowm.xchart.style.markers.Marker
 import java.awt.event.WindowAdapter
 import java.awt.event.WindowEvent
 import java.util.*
@@ -9,7 +10,7 @@ import javax.swing.JComponent
 import javax.swing.JFrame
 import javax.swing.SwingUtilities
 
-class ReflowChart() {
+class ReflowChart(private val backend: BackendWithEvents) {
 
     private val subcharts = mutableListOf<SubChart<Int>>()
     private val wrapper : SwingWrapper<XYChart>
@@ -40,20 +41,25 @@ class ReflowChart() {
 
             override fun windowClosed(e: WindowEvent?) {
                 super.windowClosed(e)
-                StateLogger.onNewEntry.remove(newData)
+                backend.onLogsChanged.remove { onNewLogData }
             }
 
         })
 
         update()
-        StateLogger.onNewEntry.add(newData)
+        backend.onLogsChanged.add { onNewLogData }
+
         return true
 
     }
 
+    private val onNewLogData : (() -> Unit) = {
+        newData.invoke()
+    }
+
     private fun update(){
 
-        val entries = StateLogger.getEntries()
+        val entries = backend.logs().states
 
         SwingUtilities.invokeLater {
 
