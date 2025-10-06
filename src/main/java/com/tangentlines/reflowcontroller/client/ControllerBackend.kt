@@ -47,7 +47,7 @@ data class StatusDto(
     val timeAlive: Long? = null,
     val timeSinceTempOver: Long? = null,
     val timeSinceCommand: Long? = null,
-    val controllerTimeAlive: Int? = null,
+    val controllerTimeAlive: Long? = null,
     val profile: ReflowProfile? = null,
     val finished: Boolean? = null
 )

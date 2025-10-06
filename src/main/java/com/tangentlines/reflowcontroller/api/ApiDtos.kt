@@ -39,7 +39,7 @@ data class StatusDto(
     @SerializedName("timeAlive") val timeAlive: Long?,
     @SerializedName("timeSinceTempOver") val timeSinceTempOver: Long?,
     @SerializedName("timeSinceCommand") val timeSinceCommand: Long?,
-    @SerializedName("controllerTimeAlive") val controllerTimeAlive: Int?,
+    @SerializedName("controllerTimeAlive") val controllerTimeAlive: Long?,
     @SerializedName("profile") val profile: ReflowProfile?,
     @SerializedName("finished") val finished: Boolean?
 )

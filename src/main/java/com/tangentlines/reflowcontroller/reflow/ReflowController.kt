@@ -17,7 +17,7 @@ class ReflowController(port : String) {
     var onNewPhase : ((ReflowProfile, Phase?, Boolean) -> Unit)? = null
 
     private var timer : Timer? = null
-    private var controllerTimeAlive : Int? = null
+    private var controllerTimeAlive : Long? = null
 
     private var intensity : Float = 1.0f
     private var targetTemperature : Float? = null
@@ -233,7 +233,7 @@ class ReflowController(port : String) {
         return lastCommand?.let { System.currentTimeMillis() - it }
     }
 
-    fun getControllerTimeAlive() : Int? {
+    fun getControllerTimeAlive() : Long? {
         return controllerTimeAlive
     }
 

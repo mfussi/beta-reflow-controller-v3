@@ -238,7 +238,7 @@ class HttpApiServer(
         timeAlive           = safe(0L) { controller.getTime() },
         timeSinceTempOver   = safe(0L) { controller.getTimeSinceTempOver() },
         timeSinceCommand    = safe(0L) { controller.getTimeSinceCommand() },
-        controllerTimeAlive = safe(0) { controller.getControllerTimeAlive() },
+        controllerTimeAlive = safe(0L) { controller.getControllerTimeAlive() },
         profile             = safe(null as ReflowProfile?) { controller.getProfile() },
         finished            = safe(false) { controller.isFinished() }
     )

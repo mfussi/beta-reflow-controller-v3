@@ -100,7 +100,7 @@ class ApplicationController() {
         return reflow?.getTimeSinceCommand()
     }
 
-    fun getControllerTimeAlive() : Int? {
+    fun getControllerTimeAlive() : Long? {
         return reflow?.getControllerTimeAlive()
     }
 
