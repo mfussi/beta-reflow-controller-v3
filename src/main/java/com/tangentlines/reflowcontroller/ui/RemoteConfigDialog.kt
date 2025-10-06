@@ -10,12 +10,12 @@ import javax.swing.*
 
 class RemoteConfigDialog(
     parent: JFrame?,
-    private val onSelect: (host: String, port: Int) -> Unit
+    private val port : Int,
+    private val onSelect: (host: String) -> Unit
 ) : JDialog(parent, "Remote API", true) {
 
     private val prefs: Preferences = Preferences.userRoot().node("com.tangentlines.reflowcontroller.remote")
     private val hostField = JTextField(prefs.get("remote_host", "localhost"), 16)
-    private val portField = JTextField(prefs.getInt("remote_port", 8090).toString(), 6)
     private val statusLabel = JLabel(" ")
 
     init {
@@ -24,8 +24,6 @@ class RemoteConfigDialog(
         val form = JPanel().apply {
             layout = BoxLayout(this, BoxLayout.Y_AXIS)
             add(labeled("Host / IP:", hostField))
-            add(Box.createVerticalStrut(6))
-            add(labeled("Port:", portField))
         }
         add(form, BorderLayout.CENTER)
 
@@ -49,7 +47,7 @@ class RemoteConfigDialog(
         }
 
     private fun onTest(@Suppress("UNUSED_PARAMETER") e: ActionEvent) {
-        val (host, port) = readFields() ?: return
+        val host = readFields() ?: return
         try {
             val backend = RemoteControllerBackend(host, port)
             val st = backend.status()
@@ -60,25 +58,18 @@ class RemoteConfigDialog(
     }
 
     private fun onUse(@Suppress("UNUSED_PARAMETER") e: ActionEvent) {
-        val (host, port) = readFields() ?: return
+        val host = readFields() ?: return
         // Persist the last used host/port
         try {
             prefs.put("remote_host", host)
-            prefs.putInt("remote_port", port)
         } catch (_: Exception) {
             // ignore preference write failures
         }
-        onSelect(host, port)
+        onSelect(host)
         dispose()
     }
 
-    private fun readFields(): Pair<String, Int>? {
-        val host = hostField.text.trim().ifBlank { "localhost" }
-        val port = portField.text.trim().toIntOrNull()
-        if (port == null || port !in 1..65535) {
-            JOptionPane.showMessageDialog(this, "Invalid port", "Error", JOptionPane.ERROR_MESSAGE)
-            return null
-        }
-        return host to port
+    private fun readFields():String? {
+        return hostField.text.trim().ifBlank { "localhost" }
     }
 }

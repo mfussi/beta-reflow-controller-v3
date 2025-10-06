@@ -3,9 +3,22 @@ package com.tangentlines.reflowcontroller.client
 
 import com.tangentlines.reflowcontroller.api.*
 import com.tangentlines.reflowcontroller.reflow.profile.ReflowProfile
+import javax.swing.UIManager.put
 
-class RemoteControllerBackend(host: String, port: Int) : ControllerBackend {
-    private val http = HttpJson("http://$host:$port", defaultHeaders = mapOf("X-Client-Name" to System.getProperty("user.name","client")))
+class RemoteControllerBackend(host: String, port: Int, clientKey: String? = null) : ControllerBackend {
+
+    private val resolvedKey = clientKey
+        ?: System.getProperty("client.key")
+        ?: System.getenv("REFLOW_CLIENT_KEY")
+        ?: System.getenv("CLIENT_KEY")
+
+    private val http = HttpJson(
+        "http://$host:$port",
+        defaultHeaders = mapOf<String, String>(
+            resolvedKey?.let { Pair("Authorization", HttpJson.basicAuthHeader(password = it)) } ?: ("" to ""),
+            System.getProperty("user.name")?.let { Pair("X-Client-Name", it) } ?: ("" to "")
+        ).filter { !it.value.isEmpty() }
+    )
 
     override fun availablePorts(): List<String> =
         http.get<PortsResponse>("/api/ports").ports

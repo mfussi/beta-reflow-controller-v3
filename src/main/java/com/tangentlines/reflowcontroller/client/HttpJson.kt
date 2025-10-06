@@ -90,4 +90,13 @@ class HttpJson(private val baseUrl: String,
     class HttpException(val code: Int, val body: String)
         : RuntimeException("HTTP $code: ${body.take(256)}")
 
+    companion object {
+        fun basicAuthHeader(username: String = "client", password: String): String {
+            val token = java.util.Base64.getEncoder().encodeToString(
+                "$username:$password".toByteArray(StandardCharsets.UTF_8)
+            )
+            return "Basic $token"
+        }
+    }
+
 }

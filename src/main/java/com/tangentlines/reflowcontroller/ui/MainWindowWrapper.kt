@@ -16,9 +16,7 @@ import java.awt.Toolkit
 import java.awt.event.ActionEvent
 import java.util.*
 import javax.swing.DefaultComboBoxModel
-import javax.swing.DefaultListCellRenderer
 import javax.swing.JFrame
-import javax.swing.JList
 import javax.swing.JMenu
 import javax.swing.JMenuBar
 import javax.swing.JMenuItem
@@ -28,7 +26,7 @@ import javax.swing.SwingUtilities
 import javax.swing.text.DefaultCaret
 import javax.swing.text.JTextComponent
 
-class MainWindowWrapper(private val window : MainWindow, private val controller: ApplicationController) {
+class MainWindowWrapper(private val window : MainWindow, private val controller: ApplicationController, private val port: Int) {
 
     private var baseTitle: String = "Reflow Controller — Local"
     
@@ -114,7 +112,7 @@ class MainWindowWrapper(private val window : MainWindow, private val controller:
         // 1) Use Remote API...
         val useRemote = JMenuItem("Use Remote API…").apply {
             addActionListener { _: ActionEvent ->
-                RemoteConfigDialog(window) { host, port ->
+                RemoteConfigDialog(window, port) { host ->
                     backend.swap(RemoteControllerBackend(host, port))
                     JOptionPane.showMessageDialog(
                         window,

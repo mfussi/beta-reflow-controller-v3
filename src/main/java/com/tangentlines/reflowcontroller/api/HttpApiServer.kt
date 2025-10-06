@@ -15,13 +15,21 @@ import com.sun.net.httpserver.HttpServer
 import java.io.InputStreamReader
 import java.net.InetSocketAddress
 import java.nio.charset.StandardCharsets
+import java.util.Base64
 import java.util.concurrent.Executors
 import java.util.concurrent.ThreadFactory
 
 class HttpApiServer(
     private val controller: ApplicationController,
-    private val port: Int = 8080
+    private val port: Int = 8090,
+    private val key: String? = null
 ) {
+
+    private val requiredClientKey: String? =
+        key ?: System.getProperty("client.key")            // e.g. -Dclient.key=secret
+            ?: System.getenv("REFLOW_CLIENT_KEY")       // or env REFLOW_CLIENT_KEY=secret
+            ?: System.getenv("CLIENT_KEY")
+
     private val gson: Gson = GsonBuilder().serializeNulls().create()
     private lateinit var server: HttpServer
 
@@ -243,6 +251,9 @@ class HttpApiServer(
                 ex.sendResponseHeaders(204, -1)
                 return@HttpHandler
             }
+
+            ex.requireAuth()
+
             val result = block(ex)
             when (result) {
                 is Response     -> ex.sendJson(result.status, result.payload)
@@ -264,6 +275,7 @@ class HttpApiServer(
     }
 
     private fun safeSendError(ex: HttpExchange, code: Int, msg: String) {
+        if (code == 401) ex.responseHeaders.set("WWW-Authenticate", """Basic realm="ReflowAPI"""")
         runCatching { ex.sendJson(code, mapOf("error" to msg)) }
     }
 
@@ -328,6 +340,25 @@ class HttpApiServer(
         }
     }
 
+    private fun HttpExchange.requireAuth() {
+        val key = requiredClientKey ?: return // auth disabled if no key configured
+        val hdr = requestHeaders.getFirst("Authorization") ?: throw Unauthorized("missing Authorization")
+        if (!hdr.startsWith("Basic ", ignoreCase = true)) throw Unauthorized("invalid auth scheme")
+
+        val raw = hdr.substring(6).trim()
+        val decoded = try {
+            String(Base64.getDecoder().decode(raw), StandardCharsets.UTF_8)
+        } catch (_: Exception) {
+            throw Unauthorized("invalid base64")
+        }
+
+        // Accept either "user:key" or ":key". Username is ignored.
+        val supplied = decoded.substringAfter(':', missingDelimiterValue = decoded)
+        // Also accept the edge-case where client sent only the key (non-standard but harmless)
+        val ok = (supplied == key) || (decoded == key)
+        if (!ok) throw Unauthorized("invalid credentials")
+    }
+
     private fun HttpExchange.requireMethod(expected: String) {
         if (!requestMethod.equals(expected, ignoreCase = true)) throw MethodNotAllowed("Method $expected required")
     }
@@ -373,3 +404,5 @@ private class BadRequest(message: String) : ApiError(message, 400)
 private class NotFound(message: String) : ApiError(message, 404)
 private class MethodNotAllowed(message: String) : ApiError(message, 405)
 private class ControllerError(message: String) : ApiError(message, 500)
+
+private class Unauthorized(message: String) : ApiError(message, 401)

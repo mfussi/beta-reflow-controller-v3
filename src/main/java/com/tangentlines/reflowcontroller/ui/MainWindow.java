@@ -35,9 +35,9 @@ public class MainWindow extends JFrame {
     public JComboBox cbProfile;
     public JLabel tvPhase;
 
-    public MainWindow(ApplicationController controller) {
+    public MainWindow(ApplicationController controller, int port) {
 
-        MainWindowWrapper wrapper = new MainWindowWrapper(this, controller);
+        MainWindowWrapper wrapper = new MainWindowWrapper(this, controller, port);
         setContentPane(root);
 
     }
