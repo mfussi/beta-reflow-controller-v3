@@ -13,7 +13,10 @@ import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpHandler
 import com.sun.net.httpserver.HttpServer
 import java.io.InputStreamReader
+import java.net.DatagramPacket
+import java.net.DatagramSocket
 import java.net.InetSocketAddress
+import java.net.SocketTimeoutException
 import java.nio.charset.StandardCharsets
 import java.util.Base64
 import java.util.concurrent.Executors
@@ -25,10 +28,21 @@ class HttpApiServer(
     private val key: String? = null
 ) {
 
+    private val serverName: String =
+        System.getProperty("server.name") ?:
+        System.getenv("REFLOW_SERVER_NAME") ?:
+        ("Reflow @" + runCatching { java.net.InetAddress.getLocalHost().hostName }.getOrDefault("host"))
+
+    private val discoveryPort: Int =
+        (System.getProperty("discovery.port") ?: System.getenv("REFLOW_DISCOVERY_PORT"))?.toIntOrNull() ?: 52525
+
     private val requiredClientKey: String? =
         key ?: System.getProperty("client.key")            // e.g. -Dclient.key=secret
             ?: System.getenv("REFLOW_CLIENT_KEY")       // or env REFLOW_CLIENT_KEY=secret
             ?: System.getenv("CLIENT_KEY")
+
+    @Volatile private var discoverySocket: DatagramSocket? = null
+    @Volatile private var discoveryThread: Thread? = null
 
     private val gson: Gson = GsonBuilder().serializeNulls().create()
     private lateinit var server: HttpServer
@@ -42,6 +56,15 @@ class HttpApiServer(
 
     fun start() {
         server = HttpServer.create(InetSocketAddress(port), 0)
+
+        server.createContext("/api/hello", openHandler { _ ->
+            ok(mapOf(
+                "name" to serverName,
+                "port" to port,
+                "requiresAuth" to (requiredClientKey != null),
+                "version" to "1.0"  // optional static string
+            ))
+        })
 
         // ---- Liveness
         server.createContext("/api/ping", handler { _ -> ok(mapOf("ok" to true)) })
@@ -238,12 +261,81 @@ class HttpApiServer(
         })
 
         server.start()
+        startDiscoveryResponder()
+
         println("HTTP API started on http://0.0.0.0:$port (try /api/ping)")
     }
 
-    fun stop() { if (this::server.isInitialized) server.stop(0) }
+    fun stop() {
+        if (this::server.isInitialized) {
+            server.stop(0)
+        }
+        stopDiscoveryResponder()
+    }
+
+    private fun startDiscoveryResponder() {
+        // simple, stateless responder
+        val sock = DatagramSocket(discoveryPort).apply {
+            soTimeout = 1000 // 1s read timeout for responsive shutdown
+            reuseAddress = true
+        }
+        discoverySocket = sock
+        discoveryThread = Thread({
+            val buf = ByteArray(1024)
+            while (!Thread.currentThread().isInterrupted) {
+                try {
+                    val packet = DatagramPacket(buf, buf.size)
+                    sock.receive(packet)
+                    val msg = String(packet.data, packet.offset, packet.length, StandardCharsets.UTF_8).trim()
+                    if (msg == "REFLOW_DISCOVERY?") {
+                        val payload = """{"name":"$serverName","port":$port,"requiresAuth":${requiredClientKey != null}}"""
+                        val bytes = payload.toByteArray(StandardCharsets.UTF_8)
+                        val reply = DatagramPacket(bytes, bytes.size, packet.address, packet.port)
+                        sock.send(reply)
+                    }
+                } catch (_: SocketTimeoutException) {
+                    // loop
+                } catch (_: Throwable) {
+                    // ignore transient errors, keep serving
+                }
+            }
+        }, "reflow-discovery").apply { isDaemon = true; start() }
+    }
+
+    private fun stopDiscoveryResponder() {
+        try { discoveryThread?.interrupt() } catch (_: Exception) {}
+        try { discoverySocket?.close() } catch (_: Exception) {}
+        discoveryThread = null
+        discoverySocket = null
+    }
 
     // ---------------- Helpers ----------------
+    // open/public handler (no Basic Auth)
+    private fun openHandler(block: (HttpExchange) -> Any?): HttpHandler = HttpHandler { ex ->
+        try {
+            ex.responseHeaders.enableCors()
+            if (ex.requestMethod.equals("OPTIONS", ignoreCase = true)) {
+                ex.sendResponseHeaders(204, -1); return@HttpHandler
+            }
+            val result = block(ex)
+            when (result) {
+                is Response -> ex.sendJson(result.status, result.payload)
+                is Map<*, *> -> ex.sendJson(200, result)
+                is Collection<*> -> ex.sendJson(200, result)
+                is String -> ex.sendJson(200, mapOf("message" to result))
+                null -> ex.sendJson(200, mapOf("ok" to true))
+                else -> ex.sendJson(200, result)
+            }
+        } catch (e: ApiError) {
+            safeSendError(ex, e.statusCode, e.message ?: "error")
+        } catch (e: Throwable) {
+            e.printStackTrace(); safeSendError(ex, 500, e.message ?: "internal error")
+        } finally {
+            try { ex.responseBody.close() } catch (_: Exception) {}
+            try { ex.close() } catch (_: Exception) {}
+        }
+    }
+
     private fun handler(block: (HttpExchange) -> Any?): HttpHandler = HttpHandler { ex ->
         try {
             ex.responseHeaders.enableCors()
