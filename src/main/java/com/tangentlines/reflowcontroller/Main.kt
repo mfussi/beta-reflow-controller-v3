@@ -16,6 +16,10 @@ object Main {
             ?.substringAfter("=")
             ?.let { System.setProperty("client.key", it) }
 
+        args.firstOrNull { it.startsWith("--server-name=") }
+            ?.substringAfter("=")
+            ?.let { System.setProperty("server.name", it) }
+
         val controller = ApplicationController()
 
         if (headless) {
