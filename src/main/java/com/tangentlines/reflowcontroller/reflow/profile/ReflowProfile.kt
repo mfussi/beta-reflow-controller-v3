@@ -9,7 +9,8 @@ import java.io.FileReader
 // Two explicit phase types
 enum class PhaseType {
     @SerializedName("heating") HEATING,
-    @SerializedName("reflow")  REFLOW
+    @SerializedName("reflow")  REFLOW,
+    @SerializedName("cooling") COOLING
 }
 
 // Profile with dynamic, ordered phases
@@ -31,37 +32,29 @@ data class ReflowProfile(
     override fun toString(): String = name
 }
 
-// Single phase definition (typed), with optional feed-forward knobs
+/**
+ * Phase types:
+ *  - HEATING: reach target_temperature within `time` seconds (time is a goal, not auto-advance).
+ *  - REFLOW : hold above target_temperature (threshold) for `hold_for` seconds; do not exceed `max_temperature`.
+ *  - COOLING: heater OFF for `time` seconds (no active target).
+ */
 data class Phase(
-
-    @SerializedName("name")
-    val name: String,
-
-    @SerializedName("type")
-    val type: PhaseType = PhaseType.HEATING,
+    @SerializedName("name") val name: String,
+    @SerializedName("type") val type: PhaseType = PhaseType.HEATING,
 
     // Common
-    @SerializedName("target_temperature")
-    val targetTemperature: Float,
+    @SerializedName("target_temperature") val targetTemperature: Float, // REFLOW=threshold
+    @SerializedName("time") val time: Int = 0,        // HEATING goal time, COOLING duration; REFLOW usually 0
+    @SerializedName("hold_for") val holdFor: Int = 0, // REFLOW hold seconds; others typically 0
 
-    // HEATING: seconds to reach target
-    // REFLOW : unused (keep 0) — use holdFor instead
-    @SerializedName("time")
-    val time: Int = 0,
+    // Feed-forward
+    @SerializedName("initial_intensity") val initialIntensity: Float? = null,
 
-    // REFLOW: seconds to stay above target (threshold)
-    // HEATING: usually 0
-    @SerializedName("hold_for")
-    val holdFor: Int = 0,
+    // HEATING optional: slope limit °C/s
+    @SerializedName("max_slope") val maxSlope: Float? = null,
 
-    // Feed-forward start; refined at runtime and suggested back via logs
-    @SerializedName("initial_intensity")
-    val initialIntensity: Float? = null,
-
-    // Optional: cap actual slope for HEATING (°C/s)
-    @SerializedName("max_slope")
-    val maxSlope: Float? = null
-
+    // REFLOW: cap temperature
+    @SerializedName("max_temperature") val maxTemperature: Float? = null
 )
 
 /** Load all profiles from ./profiles (new schema only). */

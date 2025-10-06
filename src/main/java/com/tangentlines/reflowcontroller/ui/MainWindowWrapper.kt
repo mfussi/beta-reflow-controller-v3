@@ -146,14 +146,13 @@ class MainWindowWrapper(private val window : MainWindow, private val controller:
         if (profile?.name != null) lastProfileName = profile.name
         window.cbProfile.isEnabled = backend.status().running != true
 
-        if(finished == true){
-
+        if(phase?.type == PhaseType.COOLING) {
             val st = backend.status()
             beeper.arm(st.temperature)
+        }
 
-            Toolkit.getDefaultToolkit().beep()
+        if(finished == true){
             JOptionPane.showMessageDialog(window.root, "Your pcb is now finished. Please open the oven door and let the pcb cool down", "Finished - ${profile?.name}", JOptionPane.INFORMATION_MESSAGE)
-
         }
 
     }
@@ -330,6 +329,7 @@ class MainWindowWrapper(private val window : MainWindow, private val controller:
             PhaseType.HEATING -> "Heating"
             PhaseType.REFLOW -> "Reflow"
             null -> "-"
+            PhaseType.COOLING -> "Cooling"
         }
 
         if(st.profile != null) {
