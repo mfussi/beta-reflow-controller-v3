@@ -166,7 +166,7 @@ class HttpApiServer(
             lastProfileSource = source
             lastProfileClient = client
 
-            ok(StartResponse(okStart, safe(false) { controller.isRunning() }, safe<String?>(null) { controller.getPhase() }, currentMode(), profile.name))
+            ok(StartResponse(okStart, safe(false) { controller.isRunning() }, safe<Int?>(null) { controller.getPhase() }, currentMode(), profile.name))
         })
 
 // /api/start-inline (alias)
@@ -187,7 +187,7 @@ class HttpApiServer(
             lastProfileSource = "remote"
             lastProfileClient = clientName
 
-            ok(StartResponse(okStart, safe(false) { controller.isRunning() }, safe<String?>(null) { controller.getPhase() }, currentMode(), profile.name))
+            ok(StartResponse(okStart, safe(false) { controller.isRunning() }, safe<Int?>(null) { controller.getPhase() }, currentMode(), profile.name))
         })
 
         // ---- Profiles helpers
@@ -378,7 +378,7 @@ class HttpApiServer(
         return StatusDto(
             connected           = safe(false) { controller.isConnected() },
             running             = running,
-            phase               = safe<String?>(null) { controller.getPhase() },
+            phase               = safe<Int?>(null) { controller.getPhase() },
             mode                = currentMode(),
             temperature         = safe(0f) { controller.getTemperature() },
             targetTemperature   = safe(0f) { controller.getTargetTemperature() },
@@ -394,8 +394,7 @@ class HttpApiServer(
             profileClient       = if (running) lastProfileClient else null,
             port                = controller.getPort(),
             phaseTime           = controller.getPhaseTime(),
-            nextPhaseIn         = controller.getNextPhaseIn(),
-            phaseType           = controller.getPhaseType()
+            nextPhaseIn         = controller.getNextPhaseIn()
         )
     }
 

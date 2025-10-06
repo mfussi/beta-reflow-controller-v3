@@ -55,7 +55,7 @@ class RemoteControllerBackend(host: String, port: Int, clientKey: String? = null
         return StatusDto(
             connected = s.connected,
             running = s.running,
-            phase = s.phase,
+            phase = s.phase?.let { s.profile?.phases?.getOrNull(it) },
             mode = s.mode,
             temperature = s.temperature,
             targetTemperature = s.targetTemperature,
@@ -71,8 +71,7 @@ class RemoteControllerBackend(host: String, port: Int, clientKey: String? = null
             profileClient = s.profileClient,
             port = s.port,
             nextPhaseIn = s.nextPhaseIn,
-            phaseTime = s.phaseTime,
-            phaseType = s.phaseType
+            phaseTime = s.phaseTime
         )
     }
 

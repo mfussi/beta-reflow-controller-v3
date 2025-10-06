@@ -4,6 +4,7 @@ package com.tangentlines.reflowcontroller.client
 import com.google.gson.JsonObject
 import com.tangentlines.reflowcontroller.log.LogEntry
 import com.tangentlines.reflowcontroller.log.State
+import com.tangentlines.reflowcontroller.reflow.profile.Phase
 import com.tangentlines.reflowcontroller.reflow.profile.ReflowProfile
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -28,7 +29,7 @@ class BackendWithEvents(
 
     // existing events
     val onStateChanged = Event<StatusDto>(onEdt = true)
-    val onPhaseChanged = Event<Triple<ReflowProfile?, String?, Boolean?>?>(onEdt = true)
+    val onPhaseChanged = Event<Triple<ReflowProfile?, Phase?, Boolean?>?>(onEdt = true)
 
     // logs & states events
     val onLogsChanged = Event<List<LogEntry>>(onEdt = true)

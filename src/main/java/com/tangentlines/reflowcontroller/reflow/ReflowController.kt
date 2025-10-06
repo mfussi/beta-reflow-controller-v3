@@ -249,14 +249,25 @@ class ReflowController(port : String) {
         return device.disconnect()
     }
 
-    fun getPhase(): String? {
+    fun getPhase(): Int? {
 
-        if(reflowProfile == null) {
-            return "Manual"
+        return if(reflowProfile == null) {
+            -1
         } else {
-            return reflowProfile!!.getNameForPhase(currentReflowProfilePhase)
+            currentReflowProfilePhase
         }
 
+    }
+
+    fun getPhaseName() : String? {
+        val idx = getPhase();
+        return when {
+            idx == null -> "Manual"
+            idx == -1 -> "Manual"
+            reflowProfile == null -> "Manual"
+            idx > reflowProfile!!.phases.size -> "Finished"
+            else -> reflowProfile!!.getNameForPhase(idx)
+        }
     }
 
     fun isFinished(): Boolean? {

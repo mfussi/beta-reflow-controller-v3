@@ -39,7 +39,7 @@ interface ControllerBackend {
 data class StatusDto(
     val connected: Boolean? = null,
     val running: Boolean? = null,
-    val phase: String? = null,
+    val phase: Phase? = null,
     val mode: String? = null,
     val temperature: Float? = null,
     val targetTemperature: Float? = null,
@@ -55,8 +55,7 @@ data class StatusDto(
     val profileClient: String?,
     val port: String?,
     val nextPhaseIn: Long?,
-    val phaseTime: Long?,
-    val phaseType: Phase.PhaseType?
+    val phaseTime: Long?
 )
 
 data class LogsDto(

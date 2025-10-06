@@ -35,7 +35,7 @@ data class SaveProfileRequest(
 data class StatusDto(
     @SerializedName("connected") val connected: Boolean,
     @SerializedName("running") val running: Boolean,
-    @SerializedName("phase") val phase: String?,
+    @SerializedName("phase") val phase: Int?,
     @SerializedName("mode") val mode: String,
     @SerializedName("temperature") val temperature: Float?,
     @SerializedName("targetTemperature") val targetTemperature: Float?,
@@ -51,8 +51,7 @@ data class StatusDto(
     @SerializedName("profileClient") val profileClient: String? = null,
     @SerializedName("port") val port: String? = null,
     @SerializedName("phaseTime") val phaseTime: Long?,
-    @SerializedName("nextPhaseIn") val nextPhaseIn: Long?,
-    @SerializedName("phaseType") val phaseType: Phase.PhaseType?
+    @SerializedName("nextPhaseIn") val nextPhaseIn: Long?
 )
 
 data class PortsResponse(@SerializedName("ports") val ports: List<String>)
@@ -103,7 +102,7 @@ data class ManualStopResponse(@SerializedName("mode") val mode: String)
 data class StartResponse(
     @SerializedName("ok") val ok: Boolean,
     @SerializedName("running") val running: Boolean,
-    @SerializedName("phase") val phase: String?,
+    @SerializedName("phase") val phase: Int?,
     @SerializedName("mode") val mode: String,
     @SerializedName("profileName") val profileName: String
 )

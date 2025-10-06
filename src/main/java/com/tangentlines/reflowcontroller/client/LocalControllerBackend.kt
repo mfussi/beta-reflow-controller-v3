@@ -43,7 +43,7 @@ class LocalControllerBackend(private val controller: ApplicationController) : Co
     override fun status(): StatusDto = StatusDto(
         connected = controller.isConnected(),
         running = controller.isRunning(),
-        phase = controller.getPhase(),
+        phase = controller.getPhase()?.let { controller.getProfile()?.phases?.getOrNull(it) },
         mode = try {
             val isManual = try { controller::class.java.getMethod("isManual").invoke(controller) as? Boolean } catch (_: Exception) { null }
                 ?: try { controller::class.java.getMethod("isManualMode").invoke(controller) as? Boolean } catch (_: Exception) { null }
@@ -63,8 +63,7 @@ class LocalControllerBackend(private val controller: ApplicationController) : Co
         profileClient = "local",
         port = controller.getPort(),
         phaseTime = controller.getPhaseTime(),
-        nextPhaseIn = controller.getNextPhaseIn(),
-        phaseType = controller.getPhaseType()
+        nextPhaseIn = controller.getNextPhaseIn()
     )
 
     override fun logs(): LogsDto = LogsDto(

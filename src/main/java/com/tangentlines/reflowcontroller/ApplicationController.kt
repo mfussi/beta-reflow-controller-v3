@@ -30,7 +30,7 @@ class ApplicationController() {
 
                 notifyChanges();
                 Logger.addMessage("${String.format("%.1f °C", connector.getTemperature())} - ${String.format("%.0f %%", connector.getActiveIntensity() * 100.0f)}")
-                StateLogger.add(State(System.currentTimeMillis(), connector.getPhase() ?: "unknown", connector.getTemperature(), connector.getActiveIntensity(), connector.getTargetTemperature(), connector.getIntensity()))
+                StateLogger.add(State(System.currentTimeMillis(), connector.getPhaseName() ?: "unknown", connector.getTemperature(), connector.getActiveIntensity(), connector.getTargetTemperature(), connector.getIntensity()))
 
             }
 
@@ -137,7 +137,7 @@ class ApplicationController() {
         return isConnected() && reflow?.isRunning() ?: false
     }
 
-    fun getPhase(): String? {
+    fun getPhase(): Int? {
         return reflow?.getPhase()
     }
 

@@ -152,7 +152,7 @@ class MainWindowWrapper(private val window : MainWindow, private val controller:
 
     }
 
-    private fun phaseChanged(profile: ReflowProfile?, phase: String?, finished : Boolean?) {
+    private fun phaseChanged(profile: ReflowProfile?, phase: Phase?, finished : Boolean?) {
 
         if (profile?.name != null) lastProfileName = profile.name
         window.cbProfile.isEnabled = backend.status().running != true
@@ -325,7 +325,7 @@ class MainWindowWrapper(private val window : MainWindow, private val controller:
 
         enableRecursive(window.btnConnect, st.connected != true && backend.availablePorts().isNotEmpty())
         enableRecursive(window.btnDisconnect, st.connected == true)
-        enableRecursive(window.panelSettings, st.connected == true && st.running == true && st.phase == "Manual")
+        enableRecursive(window.panelSettings, st.connected == true && st.running == true && st.phase == null)
         enableRecursive(window.panelStatus, st.connected == true)
         enableRecursive(window.panelLog, st.connected == true)
 
@@ -337,7 +337,7 @@ class MainWindowWrapper(private val window : MainWindow, private val controller:
         window.tvActiveIntensity.text = UiFormat.percentagePair(st.activeIntensity, st.intensity, fraction = true)
         window.tvTime.text = UiFormat.duration(st.timeAlive?.let { it / 1000 })
 
-        val phaseTypeStr = when(st.phaseType) {
+        val phaseTypeStr = when(st.phase?.phaseType()) {
             Phase.PhaseType.HOLD -> "Hold Temp. For"
             Phase.PhaseType.TIME -> "Fixed Time"
             Phase.PhaseType.UNTIL_TEMP -> "Until Temp"
@@ -497,33 +497,9 @@ private sealed class ProfileChoice {
     }
 }
 
-// Build "Idle — Preheat — Soak — Finished" with current phase in <b>…</b>
-private fun phaseTrailHtml(current: String?, phases: List<String> = listOf("Idle","Preheat","Soak","Reflow","Finished")): String {
-
-    if(current == "Manual") {
-        return "Manual"
-    }
-
-    val cur = (current ?: "Idle").toLowerCase()
-    val html = phases.joinToString(" — ") { p ->
-        if (p.toLowerCase() == cur) "<b>$p</b>" else p
-    }
-    return "<html>$html</html>"
-}
-
-// Convenience: derive current label from status
-private fun currentPhaseNameFrom(st: com.tangentlines.reflowcontroller.client.StatusDto): String =
-    when {
-        st.profile?.name == "Manual" -> "Manual"
-        st.finished == true -> "Finished"
-        st.running == true && !st.phase.isNullOrBlank() -> st.phase.replaceFirst(st.phase[0].toChar(), st.phase[0].toUpperCase())
-        else -> "Idle"
-    }
-
-
 private fun dynamicPhaseTrailHtml(
-    current: String?,
-    profile: com.tangentlines.reflowcontroller.reflow.profile.ReflowProfile?
+    current: Phase?,
+    profile: ReflowProfile?
 ): String {
     val base = mutableListOf("Idle")
     val names = profile?.phases?.map { it.name.ifBlank { "phase" } } ?: listOf("Preheat","Soak","Reflow")
@@ -531,8 +507,8 @@ private fun dynamicPhaseTrailHtml(
     base += "Finished"
 
     val cur = when {
-        current.isNullOrBlank() -> "Idle"
-        else -> current
+        current == null -> "Idle"
+        else -> current.name
     }
 
     val html = base.joinToString(" — ") { p ->
