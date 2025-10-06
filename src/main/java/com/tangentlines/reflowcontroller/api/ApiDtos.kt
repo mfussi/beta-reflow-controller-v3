@@ -14,13 +14,17 @@ data class ManualStartRequest(
 )
 
 data class ManualSetRequest(@SerializedName("temp") val temp: Float, @SerializedName("intensity") val intensity: Float)
+
 data class TargetRequest(@SerializedName("temp") val temp: Float, @SerializedName("intensity") val intensity: Float)
+
 data class StartRequest(
     @SerializedName("profileName") val profileName: String?,
-    @SerializedName("profile") val profile: ReflowProfile?
+    @SerializedName("profile") val profile: ReflowProfile?,
+    @SerializedName("clientName") val clientName: String? = null
 )
 
 data class ValidateProfileRequest(@SerializedName("profile") val profile: ReflowProfile)
+
 data class SaveProfileRequest(
     @SerializedName("profile") val profile: ReflowProfile,
     @SerializedName("fileName") val fileName: String?
@@ -41,7 +45,9 @@ data class StatusDto(
     @SerializedName("timeSinceCommand") val timeSinceCommand: Long?,
     @SerializedName("controllerTimeAlive") val controllerTimeAlive: Long?,
     @SerializedName("profile") val profile: ReflowProfile?,
-    @SerializedName("finished") val finished: Boolean?
+    @SerializedName("finished") val finished: Boolean?,
+    @SerializedName("profileSource") val profileSource: String? = null,
+    @SerializedName("profileClient") val profileClient: String? = null
 )
 
 data class PortsResponse(@SerializedName("ports") val ports: List<String>)

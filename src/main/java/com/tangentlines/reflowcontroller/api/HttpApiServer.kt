@@ -29,6 +29,9 @@ class HttpApiServer(
     private val hasStopManual = hasMethod(controller, "stopManual")
     private val hasIsManual = hasMethod(controller, "isManual") || hasMethod(controller, "isManualMode")
 
+    @Volatile private var lastProfileSource: String? = null
+    @Volatile private var lastProfileClient: String? = null
+
     fun start() {
         server = HttpServer.create(InetSocketAddress(port), 0)
 
@@ -91,30 +94,56 @@ class HttpApiServer(
             ok(TargetResponse(okSet, safe(0f) { controller.getTargetTemperature() }, safe(0f) { controller.getIntensity() }))
         })
 
-        // ---- Start profile (name or inline)
         server.createContext("/api/start", handler { ex ->
             ex.requireMethod("POST")
             val dto = ex.readDto(StartRequest::class.java)
-            val profile: ReflowProfile = when {
-                dto.profile != null -> dto.profile
-                !dto.profileName.isNullOrBlank() -> safe(null as ReflowProfile?) {
-                    loadProfiles().firstOrNull { it.name == dto.profileName }
-                } ?: throw NotFound("Profile '${dto.profileName}' not found")
+
+            val (profile, source, client) = when {
+                dto.profile != null -> {
+                    val clientName = dto.clientName
+                        ?: ex.requestHeaders.getFirst("X-Client-Name")
+                        ?: ex.remoteAddress?.address?.hostAddress
+                        ?: "unknown"
+                    Triple(dto.profile, "remote", clientName)        // inline from client
+                }
+                !dto.profileName.isNullOrBlank() -> {
+                    val p = safe(null as ReflowProfile?) { loadProfiles().firstOrNull { it.name == dto.profileName } }
+                        ?: throw NotFound("Profile '${dto.profileName}' not found")
+                    Triple(p, "local", null)                          // from server store
+                }
                 else -> throw BadRequest("Provide either 'profile' or 'profileName'")
             }
+
             val issues = basicValidateProfile(profile)
             if (issues.isNotEmpty()) throw BadRequest("Profile invalid: $issues")
+
             val okStart = ctl("start") { controller.start(profile) }
+
+            // remember meta for status
+            lastProfileSource = source
+            lastProfileClient = client
+
             ok(StartResponse(okStart, safe(false) { controller.isRunning() }, safe<String?>(null) { controller.getPhase() }, currentMode(), profile.name))
         })
 
+// /api/start-inline (alias)
         server.createContext("/api/start-inline", handler { ex ->
             ex.requireMethod("POST")
             val dto = ex.readDto(StartRequest::class.java)
             val profile = dto.profile ?: throw BadRequest("Expected 'profile' object")
             val issues = basicValidateProfile(profile)
             if (issues.isNotEmpty()) throw BadRequest("Profile invalid: $issues")
+
+            val clientName = dto.clientName
+                ?: ex.requestHeaders.getFirst("X-Client-Name")
+                ?: ex.remoteAddress?.address?.hostAddress
+                ?: "unknown"
+
             val okStart = ctl("start") { controller.start(profile) }
+
+            lastProfileSource = "remote"
+            lastProfileClient = clientName
+
             ok(StartResponse(okStart, safe(false) { controller.isRunning() }, safe<String?>(null) { controller.getPhase() }, currentMode(), profile.name))
         })
 
@@ -143,6 +172,8 @@ class HttpApiServer(
         server.createContext("/api/stop", handler { ex ->
             ex.requireMethod("POST")
             val okStop = ctl("stop") { controller.stop() }
+            lastProfileSource = null
+            lastProfileClient = null
             ok(StopResponse(okStop, safe(false) { controller.isRunning() }))
         })
 
@@ -226,22 +257,27 @@ class HttpApiServer(
 
     private fun ok(payload: Any) = Response(200, payload)
 
-    private fun buildStatusDto(): StatusDto = StatusDto(
-        connected           = safe(false) { controller.isConnected() },
-        running             = safe(false) { controller.isRunning() },
-        phase               = safe<String?>(null) { controller.getPhase() },
-        mode                = currentMode(),
-        temperature         = safe(0f) { controller.getTemperature() },
-        targetTemperature   = safe(0f) { controller.getTargetTemperature() },
-        intensity           = safe(0f) { controller.getIntensity() },
-        activeIntensity     = safe(0f) { controller.getActiveIntensity() },
-        timeAlive           = safe(0L) { controller.getTime() },
-        timeSinceTempOver   = safe(0L) { controller.getTimeSinceTempOver() },
-        timeSinceCommand    = safe(0L) { controller.getTimeSinceCommand() },
-        controllerTimeAlive = safe(0L) { controller.getControllerTimeAlive() },
-        profile             = safe(null as ReflowProfile?) { controller.getProfile() },
-        finished            = safe(false) { controller.isFinished() }
-    )
+    private fun buildStatusDto(): StatusDto {
+        val running = safe(false) { controller.isRunning() }
+        return StatusDto(
+            connected           = safe(false) { controller.isConnected() },
+            running             = running,
+            phase               = safe<String?>(null) { controller.getPhase() },
+            mode                = currentMode(),
+            temperature         = safe(0f) { controller.getTemperature() },
+            targetTemperature   = safe(0f) { controller.getTargetTemperature() },
+            intensity           = safe(0f) { controller.getIntensity() },
+            activeIntensity     = safe(0f) { controller.getActiveIntensity() },
+            timeAlive           = safe(0L) { controller.getTime() },
+            timeSinceTempOver   = safe(0L) { controller.getTimeSinceTempOver() },
+            timeSinceCommand    = safe(0L) { controller.getTimeSinceCommand() },
+            controllerTimeAlive = safe(0L) { controller.getControllerTimeAlive() },
+            profile             = safe(null as ReflowProfile?) { controller.getProfile() },
+            finished            = safe(false) { controller.isFinished() },
+            profileSource       = if (running) lastProfileSource else null,   // NEW
+            profileClient       = if (running) lastProfileClient else null    // NEW
+        )
+    }
 
     private fun currentMode(): String {
         return try {

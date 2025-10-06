@@ -5,7 +5,7 @@ import com.tangentlines.reflowcontroller.api.*
 import com.tangentlines.reflowcontroller.reflow.profile.ReflowProfile
 
 class RemoteControllerBackend(host: String, port: Int) : ControllerBackend {
-    private val http = HttpJson("http://$host:$port")
+    private val http = HttpJson("http://$host:$port", defaultHeaders = mapOf("X-Client-Name" to System.getProperty("user.name","client")))
 
     override fun availablePorts(): List<String> =
         http.get<PortsResponse>("/api/ports").ports
@@ -53,7 +53,9 @@ class RemoteControllerBackend(host: String, port: Int) : ControllerBackend {
             timeSinceCommand = s.timeSinceCommand,
             controllerTimeAlive = s.controllerTimeAlive,
             profile = s.profile,
-            finished = s.finished
+            finished = s.finished,
+            profileSource = s.profileSource,
+            profileClient = s.profileClient
         )
     }
 

@@ -21,7 +21,8 @@ import java.nio.charset.StandardCharsets
  */
 class HttpJson(private val baseUrl: String,
                private val connectTimeoutMs: Int = 5000,
-               private val readTimeoutMs: Int = 15000) {
+               private val readTimeoutMs: Int = 15000,
+               private val defaultHeaders: Map<String,String> = emptyMap()) {
 
     private val gson = Gson()
 
@@ -61,6 +62,7 @@ class HttpJson(private val baseUrl: String,
             setRequestProperty("Accept", "application/json")
             setRequestProperty("Content-Type", "application/json; charset=utf-8")
             setRequestProperty("Connection", "close")
+            defaultHeaders.forEach { (k, v) -> setRequestProperty(k, v) }
             useCaches = false
             doInput = true
             connectTimeout = connectTimeoutMs

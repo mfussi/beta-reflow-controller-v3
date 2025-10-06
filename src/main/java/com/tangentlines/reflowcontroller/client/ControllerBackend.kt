@@ -49,7 +49,9 @@ data class StatusDto(
     val timeSinceCommand: Long? = null,
     val controllerTimeAlive: Long? = null,
     val profile: ReflowProfile? = null,
-    val finished: Boolean? = null
+    val finished: Boolean? = null,
+    val profileSource: String?,
+    val profileClient: String?
 )
 
 data class LogsDto(

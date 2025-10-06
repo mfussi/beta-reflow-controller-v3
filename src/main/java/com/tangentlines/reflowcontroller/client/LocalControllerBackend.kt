@@ -58,7 +58,9 @@ class LocalControllerBackend(private val controller: ApplicationController) : Co
         timeSinceCommand = controller.getTimeSinceCommand(),
         controllerTimeAlive = controller.getControllerTimeAlive(),
         finished = controller.isFinished(),
-        profile = controller.getProfile()
+        profile = controller.getProfile(),
+        profileSource = "local",
+        profileClient = "local"
     )
 
     override fun logs(): LogsDto = LogsDto(

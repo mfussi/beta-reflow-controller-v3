@@ -42,6 +42,8 @@ class MainWindowWrapper(private val window : MainWindow, private val controller:
         window.defaultCloseOperation = JFrame.EXIT_ON_CLOSE
 
         installLogAreaBehavior()
+        installProfileRenderer()
+
         setupMenu()
 
         backend.onStateChanged.add { updateUI() }
@@ -178,6 +180,43 @@ class MainWindowWrapper(private val window : MainWindow, private val controller:
 
     val format = DateTimeFormat.mediumTime().withLocale(Locale.GERMAN)
 
+    private fun installProfileRenderer() {
+        window.cbProfile.renderer = object : javax.swing.DefaultListCellRenderer() {
+            override fun getListCellRendererComponent(
+                list: javax.swing.JList<*>,
+                value: Any?,
+                index: Int,
+                isSelected: Boolean,
+                cellHasFocus: Boolean
+            ): java.awt.Component {
+                val c = super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus)
+
+                when (value) {
+                    is ProfileChoice.Manual -> {
+                        text = "⚙️ Manual"
+                    }
+                    is ProfileChoice.Local -> {
+                        text = "💻  ${value.profile.name}"
+                    }
+                    is ProfileChoice.Remote -> {
+                        text = "🌐  ${value.name}"
+                    }
+                    is ProfileChoice.LocalGhost -> {
+                        text = "👻  ${value.name} (external)"
+                    }
+                    is String -> { // fallback for plain strings
+                        text = if (value.equals("Manual", ignoreCase = true)) "⚙️  Manual" else "📁  $value"
+                    }
+                    else -> {
+                        text = value?.toString() ?: "-"
+                    }
+                }
+
+                return c
+            }
+        }
+    }
+
     // call this once during UI setup
     private fun installLogAreaBehavior() {
         val caret = (window.txtLog.caret as DefaultCaret)
@@ -213,66 +252,40 @@ class MainWindowWrapper(private val window : MainWindow, private val controller:
     }
 
     private fun updateProfiles() {
-        // capture current selection "key" to preserve choice when possible
-        fun keyOf(it: Any?): String = when (it) {
-            is ProfileChoice.Manual -> "MANUAL"
-            is ProfileChoice.Local  -> "LOCAL:${it.profile.name}"
-            is ProfileChoice.Remote -> "REMOTE:${it.name}"
-            else -> ""
-        }
-        val prevKey = keyOf(window.cbProfile.selectedItem)
-
-        // local profiles
+        // Build list items
         val locals = loadProfiles().map { ProfileChoice.Local(it) }
-
-        // remote profiles if we’re on a remote backend
         val remotes = (backend.currentBackend() as? RemoteControllerBackend)
             ?.listProfilesRemote()
             ?.map { ProfileChoice.Remote(it.name) }
             ?: emptyList()
 
-        // build items: Manual first, then locals, then remotes
         val items = mutableListOf<Any>(ProfileChoice.Manual).apply {
             addAll(locals)
             addAll(remotes)
         }
-
         window.cbProfile.model = DefaultComboBoxModel(items.toTypedArray())
 
-        // decide desired selection
+        // Decide selection
         val st = backend.status()
-        val desiredKey: String? = when {
-            st.running == true && (st.phase == "Manual" || st.mode?.equals("manual", ignoreCase = true) == true) ->
-                "MANUAL"
-            st.running == true && lastProfileName != null -> {
-                val name = lastProfileName!!
-                when {
-                    remotes.any { it.name == name } -> "REMOTE:$name"
-                    locals.any  { it.profile.name == name } -> "LOCAL:$name"
-                    else -> null
-                }
+        val running = st.running == true
+        val currentName = st.profile?.name
+
+        val target: Any? = when {
+            running && st.profileSource == "local" && currentName != null -> {
+                // "local" on the server == our REMOTE bucket
+                remotes.firstOrNull { it.name == currentName } ?: ProfileChoice.Remote(currentName)
             }
-            else -> null
+            running && st.profileSource == "remote" && currentName != null -> {
+                // Inline from some client == our LOCAL bucket; if we don't have it, show a ghost
+                locals.firstOrNull { it.profile.name == currentName } ?: ProfileChoice.LocalGhost(currentName)
+            }
+            else -> window.cbProfile.selectedItem // keep prior selection if idle
         }
 
-        // apply selection in priority: desiredKey (from status) -> prevKey (preserve) -> Manual
-        val targetKey = desiredKey ?: prevKey ?: "MANUAL"
-        val idx = items.indexOfFirst { keyOf(it) == targetKey }.let { if (it >= 0) it else 0 }
-        window.cbProfile.selectedIndex = idx
+        if (target != null) window.cbProfile.selectedItem = target
 
-        // nice renderer
-        window.cbProfile.renderer = object : DefaultListCellRenderer() {
-            override fun getListCellRendererComponent(list: JList<*>, value: Any?, index: Int, isSelected: Boolean, cellHasFocus: Boolean): java.awt.Component {
-                val c = super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus)
-                text = when (value) {
-                    is ProfileChoice.Manual -> "⛭  Manual"
-                    is ProfileChoice.Local  -> "💻 Local • ${value.profile.name}"
-                    is ProfileChoice.Remote -> "🌐 Remote • ${value.name}"
-                    else -> value?.toString() ?: "-"
-                }
-                return c
-            }
-        }
+        // Disable while running so user can’t change mid-run
+        window.cbProfile.isEnabled = !running
     }
 
     private fun applyTitleBadges(st: com.tangentlines.reflowcontroller.client.StatusDto? = null) {
@@ -445,12 +458,14 @@ private class BeepNotifier(
 private sealed class ProfileChoice {
     object Manual : ProfileChoice()
     data class Local(val profile: ReflowProfile) : ProfileChoice()
-    data class Remote(val name: String) : ProfileChoice()
+    data class Remote(val name: String) : ProfileChoice()      // server-stored
+    data class LocalGhost(val name: String) : ProfileChoice()  // inline from another client
 
     override fun toString(): String = when (this) {
         Manual -> "Manual"
         is Local -> "Local: ${profile.name}"
         is Remote -> "Remote: $name"
+        is LocalGhost -> "Local (external): $name"
     }
 }
 
