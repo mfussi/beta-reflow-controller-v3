@@ -67,33 +67,7 @@ object StateLogger {
     }
 
     fun export() : Boolean {
-
-        val title = "export/temp-${System.currentTimeMillis()}"
-        val data = Export(states.toList().sortedBy { it.time })
-
-        try {
-
-            val dir = File("export")
-            if(!dir.exists()){
-                dir.mkdirs()
-            }
-
-            FileWriter(File("$title.json")).use {
-                it.write(GsonBuilder().setPrettyPrinting().create().toJson(data))
-            }
-
-            CSVPrinter(FileWriter("$title.csv"), CSVFormat.EXCEL).use { printer ->
-                printer.printRecord("time", "phase", "temperature", "activeIntensity", "targetTemperature", "intensity", "timems")
-                data.data.forEach { printer.printRecord(it.timeStr, it.phase, it.temperature, it.activeIntensity, it.targetTemperature, it.intensity, it.time.toString()) }
-            }
-
-        } catch (ex: IOException) {
-            ex.printStackTrace()
-            return false
-        }
-
-        return true
-
+        return export(this.states)
     }
 
     fun getEntries(): List<State> {
@@ -103,8 +77,46 @@ object StateLogger {
 }
 
 class Export(@SerializedName("data") val data : List<State>)
-class State(@SerializedName("time") val time : Long, @SerializedName("phase") val phase : String, @SerializedName("temperature") val temperature : Float, @SerializedName("activeIntensity") val activeIntensity : Float?, @SerializedName("targetTemperature") val targetTemperature : Float?, @SerializedName("intensity") val intensity : Float) {
+
+class State(
+    @SerializedName("time") val time : Long,
+    @SerializedName("phase") val phase : String,
+    @SerializedName("temperature") val temperature : Float,
+    @SerializedName("activeIntensity") val activeIntensity : Float?,
+    @SerializedName("targetTemperature") val targetTemperature : Float?,
+    @SerializedName("intensity") val intensity : Float
+) {
 
     val timeStr = DateTimeFormat.forPattern("HH:mm:ss").print(time)
+
+}
+
+fun export(states: List<State>) : Boolean {
+
+    val title = "export/temp-${System.currentTimeMillis()}"
+    val data = Export(states.toList().sortedBy { it.time })
+
+    try {
+
+        val dir = File("export")
+        if(!dir.exists()){
+            dir.mkdirs()
+        }
+
+        FileWriter(File("$title.json")).use {
+            it.write(GsonBuilder().setPrettyPrinting().create().toJson(data))
+        }
+
+        CSVPrinter(FileWriter("$title.csv"), CSVFormat.EXCEL).use { printer ->
+            printer.printRecord("time", "phase", "temperature", "activeIntensity", "targetTemperature", "intensity", "timems")
+            data.data.forEach { printer.printRecord(it.timeStr, it.phase, it.temperature, it.activeIntensity, it.targetTemperature, it.intensity, it.time.toString()) }
+        }
+
+    } catch (ex: IOException) {
+        ex.printStackTrace()
+        return false
+    }
+
+    return true
 
 }

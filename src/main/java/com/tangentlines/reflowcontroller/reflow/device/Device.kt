@@ -12,9 +12,11 @@ interface Device {
 
     fun setPulse(pulse : Float)
     fun getPulse() : Float
+    fun getPort() : String
 
     fun getTemperature() : Float
 
     fun addOnTemperatureChanged(l : (() -> Unit))
     fun removeOnTemperatureChanged(l : (() -> Unit))
+
 }

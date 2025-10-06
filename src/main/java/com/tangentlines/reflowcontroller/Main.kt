@@ -10,7 +10,15 @@ object Main {
 
         val headless = args.contains("--api")
         val portArg = args.firstOrNull { it.startsWith("--port=") }?.substringAfter("=")
-        val port = portArg?.toIntOrNull() ?: 8080
+        val port = portArg?.toIntOrNull() ?: 8090
+
+        args.firstOrNull { it.startsWith("--client-key=") }
+            ?.substringAfter("=")
+            ?.let { System.setProperty("client.key", it) }
+
+        args.firstOrNull { it.startsWith("--server-name=") }
+            ?.substringAfter("=")
+            ?.let { System.setProperty("server.name", it) }
 
         val controller = ApplicationController()
 
@@ -19,7 +27,7 @@ object Main {
             api.start()
             Thread.currentThread().join()
         } else {
-            val window = MainWindow(controller)
+            val window = MainWindow(controller, port)
             window.pack()
             window.isVisible = true
         }

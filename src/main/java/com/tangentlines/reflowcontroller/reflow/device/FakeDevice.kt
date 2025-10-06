@@ -2,22 +2,29 @@ package com.tangentlines.reflowcontroller.reflow.device
 
 import java.util.*
 import kotlin.math.max
+import kotlin.math.min
+
 
 private const val PERIOD = 1000L
-private const val HEATING_SPEED = 0.17f          // 3 C per second
-private const val INC = 0.3f                     // heating adaption speed
-private const val COOLING = 0.05f                // 0.25 C per second
+private const val HEATING_SPEED = (0.60f)               // 3 C per second
+private const val INC = 0.3f                            // heating adaption speed
+private const val COOLING_SPEED = (0.025f)              // 0.125 C per second
 
-class FakeDevice : AbstractDevice() {
+class FakeDevice(private val port : String) : AbstractDevice() {
 
     private var isConnected: Boolean = false
     private var isStarted: Boolean = false
 
     private var currentHeatingSpeed = 0.0f
+    private var currentCoolingSpeed = 0.0f
     private var currentTemperature: Float = 20.0f
     private var currentPulse: Float = 0.0f
 
     private var updateTimer : Timer? = null
+
+    override fun getPort(): String {
+        return port
+    }
 
     override fun connect(): Boolean {
 
@@ -110,17 +117,22 @@ class FakeDevice : AbstractDevice() {
             if(isConnected && isStarted){
 
                 val heating = (HEATING_SPEED * currentPulse)
+                val cooling = max(0.0f, min(1.0f, 1.0f - currentPulse)) * (COOLING_SPEED)
+
                 currentHeatingSpeed = (currentHeatingSpeed * (1.0f - INC) + heating * INC)
+                currentCoolingSpeed = (currentCoolingSpeed * (1.0f - INC) + cooling * INC)
 
                 val fraction = (now - lastUpdate) / 1000.0f
-                currentTemperature += (currentHeatingSpeed * fraction)
 
-                if(currentHeatingSpeed == 0.0f) {
-                    currentTemperature = max(20.0f, currentTemperature - (COOLING * fraction))
+                if(currentHeatingSpeed >= 0) {
+                    currentTemperature += (currentHeatingSpeed * fraction)
+                }
+
+                if(currentCoolingSpeed >= 0) {
+                    currentTemperature = max(20.0f, currentTemperature - (currentCoolingSpeed * fraction))
                 }
 
                 lastUpdate = now
-
                 notifyTemperatureChanged()
 
             }

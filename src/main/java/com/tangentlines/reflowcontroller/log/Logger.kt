@@ -1,5 +1,7 @@
 package com.tangentlines.reflowcontroller.log
 
+import com.google.gson.annotations.SerializedName
+
 object Logger {
 
     val listeners : MutableList<(() -> Unit)> = mutableListOf()
@@ -22,4 +24,12 @@ object Logger {
 
 }
 
-data class LogEntry(val time : Long, val message : String)
+data class LogEntry(
+
+    @SerializedName("time")
+    val time : Long,
+
+    @SerializedName("message")
+    val message : String
+
+)

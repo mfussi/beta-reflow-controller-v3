@@ -3,7 +3,7 @@
   <grid id="27dc6" binding="root" layout-manager="GridLayoutManager" row-count="7" column-count="5" same-size-horizontally="false" same-size-vertically="false" hgap="-1" vgap="-1">
     <margin top="10" left="10" bottom="10" right="10"/>
     <constraints>
-      <xy x="20" y="20" width="567" height="1109"/>
+      <xy x="20" y="20" width="620" height="1109"/>
     </constraints>
     <properties/>
     <border type="none"/>
@@ -149,17 +149,19 @@
           </hspacer>
         </children>
       </grid>
-      <grid id="bedec" binding="panelStatus" layout-manager="GridLayoutManager" row-count="11" column-count="3" same-size-horizontally="false" same-size-vertically="false" hgap="-1" vgap="-1">
+      <grid id="bedec" binding="panelStatus" layout-manager="GridLayoutManager" row-count="10" column-count="2" same-size-horizontally="false" same-size-vertically="false" hgap="-1" vgap="-1">
         <margin top="0" left="0" bottom="0" right="0"/>
         <constraints>
-          <grid row="3" column="0" row-span="1" col-span="5" vsize-policy="3" hsize-policy="3" anchor="0" fill="3" indent="0" use-parent-layout="false"/>
+          <grid row="3" column="0" row-span="1" col-span="5" vsize-policy="3" hsize-policy="7" anchor="0" fill="3" indent="0" use-parent-layout="false"/>
         </constraints>
         <properties/>
         <border type="etched" title="Status"/>
         <children>
           <component id="e6279" class="javax.swing.JLabel">
             <constraints>
-              <grid row="2" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="1" use-parent-layout="false"/>
+              <grid row="2" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="1" use-parent-layout="false">
+                <preferred-size width="150" height="17"/>
+              </grid>
             </constraints>
             <properties>
               <text value="Temperature:"/>
@@ -167,37 +169,25 @@
           </component>
           <vspacer id="1c6bf">
             <constraints>
-              <grid row="10" column="0" row-span="1" col-span="1" vsize-policy="6" hsize-policy="1" anchor="0" fill="2" indent="0" use-parent-layout="false"/>
+              <grid row="9" column="0" row-span="1" col-span="1" vsize-policy="6" hsize-policy="1" anchor="0" fill="2" indent="0" use-parent-layout="false">
+                <preferred-size width="150" height="14"/>
+              </grid>
             </constraints>
           </vspacer>
           <component id="2c1c3" class="javax.swing.JLabel">
             <constraints>
-              <grid row="4" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="1" use-parent-layout="false"/>
+              <grid row="4" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="1" use-parent-layout="false">
+                <preferred-size width="150" height="17"/>
+              </grid>
             </constraints>
             <properties>
-              <text value="Time Running:"/>
-            </properties>
-          </component>
-          <component id="bfc99" class="javax.swing.JLabel">
-            <constraints>
-              <grid row="6" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="1" use-parent-layout="false"/>
-            </constraints>
-            <properties>
-              <text value="Target Temperature:"/>
-            </properties>
-          </component>
-          <component id="918de" class="javax.swing.JLabel">
-            <constraints>
-              <grid row="7" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="1" use-parent-layout="false"/>
-            </constraints>
-            <properties>
-              <text value="Intensity:"/>
+              <text value="Time:"/>
             </properties>
           </component>
           <component id="d4c75" class="javax.swing.JLabel" binding="tvTemperature">
             <constraints>
-              <grid row="2" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="4" anchor="4" fill="0" indent="0" use-parent-layout="false">
-                <preferred-size width="183" height="0"/>
+              <grid row="2" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="6" anchor="4" fill="0" indent="0" use-parent-layout="false">
+                <preferred-size width="410" height="0"/>
               </grid>
             </constraints>
             <properties>
@@ -206,84 +196,27 @@
           </component>
           <component id="f1c42" class="javax.swing.JLabel" binding="tvTime">
             <constraints>
-              <grid row="4" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="4" fill="0" indent="0" use-parent-layout="false">
-                <preferred-size width="183" height="0"/>
+              <grid row="4" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="6" anchor="4" fill="0" indent="0" use-parent-layout="false">
+                <preferred-size width="410" height="0"/>
               </grid>
             </constraints>
             <properties>
               <text value=""/>
-            </properties>
-          </component>
-          <component id="54cff" class="javax.swing.JLabel" binding="tvTargetTemperature">
-            <constraints>
-              <grid row="6" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="4" fill="0" indent="0" use-parent-layout="false">
-                <preferred-size width="183" height="0"/>
-              </grid>
-            </constraints>
-            <properties>
-              <text value=""/>
-            </properties>
-          </component>
-          <component id="e936a" class="javax.swing.JLabel" binding="tvIntensity">
-            <constraints>
-              <grid row="7" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="4" fill="0" indent="0" use-parent-layout="false">
-                <preferred-size width="183" height="0"/>
-              </grid>
-            </constraints>
-            <properties>
-              <text value=""/>
-            </properties>
-          </component>
-          <component id="85a64" class="javax.swing.JLabel">
-            <constraints>
-              <grid row="2" column="2" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false">
-                <preferred-size width="63" height="16"/>
-              </grid>
-            </constraints>
-            <properties>
-              <text value="°C"/>
-            </properties>
-          </component>
-          <component id="97398" class="javax.swing.JLabel">
-            <constraints>
-              <grid row="4" column="2" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false">
-                <preferred-size width="63" height="16"/>
-              </grid>
-            </constraints>
-            <properties>
-              <text value="sec"/>
-            </properties>
-          </component>
-          <component id="cdb4b" class="javax.swing.JLabel">
-            <constraints>
-              <grid row="6" column="2" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false">
-                <preferred-size width="63" height="16"/>
-              </grid>
-            </constraints>
-            <properties>
-              <text value="°C"/>
-            </properties>
-          </component>
-          <component id="6133a" class="javax.swing.JLabel">
-            <constraints>
-              <grid row="7" column="2" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false">
-                <preferred-size width="63" height="16"/>
-              </grid>
-            </constraints>
-            <properties>
-              <text value="%"/>
             </properties>
           </component>
           <vspacer id="627cd">
             <constraints>
-              <grid row="5" column="0" row-span="1" col-span="1" vsize-policy="6" hsize-policy="1" anchor="0" fill="2" indent="0" use-parent-layout="false">
+              <grid row="6" column="0" row-span="1" col-span="1" vsize-policy="6" hsize-policy="1" anchor="0" fill="2" indent="0" use-parent-layout="false">
                 <minimum-size width="-1" height="10"/>
+                <preferred-size width="150" height="14"/>
               </grid>
             </constraints>
           </vspacer>
           <component id="174b7" class="javax.swing.JLabel">
             <constraints>
-              <grid row="8" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="1" use-parent-layout="false"/>
+              <grid row="7" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="1" use-parent-layout="false">
+                <preferred-size width="150" height="17"/>
+              </grid>
             </constraints>
             <properties>
               <text value="Command Active Since:"/>
@@ -291,36 +224,18 @@
           </component>
           <component id="e5ff7" class="javax.swing.JLabel">
             <constraints>
-              <grid row="9" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="1" use-parent-layout="false"/>
+              <grid row="8" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="1" use-parent-layout="false">
+                <preferred-size width="150" height="17"/>
+              </grid>
             </constraints>
             <properties>
               <text value="Temp &gt;= Target:"/>
             </properties>
           </component>
-          <component id="e0a88" class="javax.swing.JLabel">
-            <constraints>
-              <grid row="8" column="2" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false">
-                <preferred-size width="63" height="16"/>
-              </grid>
-            </constraints>
-            <properties>
-              <text value="sec"/>
-            </properties>
-          </component>
-          <component id="90959" class="javax.swing.JLabel">
-            <constraints>
-              <grid row="9" column="2" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false">
-                <preferred-size width="63" height="16"/>
-              </grid>
-            </constraints>
-            <properties>
-              <text value="sec"/>
-            </properties>
-          </component>
           <component id="5ba5c" class="javax.swing.JLabel" binding="tvCommandSince">
             <constraints>
-              <grid row="8" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="4" fill="0" indent="0" use-parent-layout="false">
-                <preferred-size width="183" height="0"/>
+              <grid row="7" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="6" anchor="4" fill="0" indent="0" use-parent-layout="false">
+                <preferred-size width="410" height="0"/>
               </grid>
             </constraints>
             <properties>
@@ -329,8 +244,8 @@
           </component>
           <component id="7d657" class="javax.swing.JLabel" binding="tvTempOver">
             <constraints>
-              <grid row="9" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="4" fill="0" indent="0" use-parent-layout="false">
-                <preferred-size width="183" height="0"/>
+              <grid row="8" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="6" anchor="4" fill="0" indent="0" use-parent-layout="false">
+                <preferred-size width="410" height="0"/>
               </grid>
             </constraints>
             <properties>
@@ -339,35 +254,29 @@
           </component>
           <component id="2a4a8" class="javax.swing.JLabel">
             <constraints>
-              <grid row="3" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="1" use-parent-layout="false"/>
+              <grid row="3" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="1" use-parent-layout="false">
+                <preferred-size width="150" height="17"/>
+              </grid>
             </constraints>
             <properties>
-              <text value="Active Intensity:"/>
+              <text value="Intensity:"/>
             </properties>
           </component>
           <component id="892eb" class="javax.swing.JLabel" binding="tvActiveIntensity">
             <constraints>
-              <grid row="3" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="4" fill="0" indent="0" use-parent-layout="false">
-                <preferred-size width="183" height="0"/>
+              <grid row="3" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="6" anchor="4" fill="0" indent="0" use-parent-layout="false">
+                <preferred-size width="410" height="0"/>
               </grid>
             </constraints>
             <properties>
               <text value=""/>
             </properties>
           </component>
-          <component id="68b4f" class="javax.swing.JLabel">
-            <constraints>
-              <grid row="3" column="2" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false">
-                <preferred-size width="63" height="16"/>
-              </grid>
-            </constraints>
-            <properties>
-              <text value="%"/>
-            </properties>
-          </component>
           <component id="d85d8" class="javax.swing.JLabel">
             <constraints>
-              <grid row="0" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="1" use-parent-layout="false"/>
+              <grid row="0" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="1" use-parent-layout="false">
+                <preferred-size width="150" height="17"/>
+              </grid>
             </constraints>
             <properties>
               <text value="Phase:"/>
@@ -375,8 +284,8 @@
           </component>
           <component id="40d0f" class="javax.swing.JLabel" binding="tvPhase">
             <constraints>
-              <grid row="0" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="4" fill="0" indent="0" use-parent-layout="false">
-                <preferred-size width="183" height="0"/>
+              <grid row="0" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="6" anchor="4" fill="0" indent="0" use-parent-layout="false">
+                <preferred-size width="410" height="0"/>
               </grid>
             </constraints>
             <properties>
@@ -387,9 +296,28 @@
             <constraints>
               <grid row="1" column="0" row-span="1" col-span="1" vsize-policy="6" hsize-policy="1" anchor="0" fill="2" indent="0" use-parent-layout="false">
                 <minimum-size width="-1" height="10"/>
+                <preferred-size width="150" height="14"/>
               </grid>
             </constraints>
           </vspacer>
+          <component id="eeed0" class="javax.swing.JLabel">
+            <constraints>
+              <grid row="5" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="1" use-parent-layout="false"/>
+            </constraints>
+            <properties>
+              <text value="Next Phase In:"/>
+            </properties>
+          </component>
+          <component id="6beb2" class="javax.swing.JLabel" binding="tvNextPhaseIn">
+            <constraints>
+              <grid row="5" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="6" anchor="4" fill="0" indent="0" use-parent-layout="false">
+                <preferred-size width="410" height="0"/>
+              </grid>
+            </constraints>
+            <properties>
+              <text value=""/>
+            </properties>
+          </component>
         </children>
       </grid>
       <grid id="7269a" binding="panelLog" layout-manager="GridLayoutManager" row-count="1" column-count="1" same-size-horizontally="false" same-size-vertically="false" hgap="-1" vgap="-1">
