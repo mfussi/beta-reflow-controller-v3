@@ -1,5 +1,6 @@
 package com.tangentlines.reflowcontroller.ui
 
+import com.google.gson.JsonParser
 import com.tangentlines.reflowcontroller.ApplicationController
 import com.tangentlines.reflowcontroller.client.BackendWithEvents
 import com.tangentlines.reflowcontroller.client.LocalControllerBackend
@@ -311,29 +312,55 @@ class MainWindowWrapper(private val window : MainWindow, private val controller:
 
     }
 
-    private fun executeAction(title : String, ask : Boolean = false, success : Boolean = false, action : (() -> Boolean)) {
+    private fun showActionError(title: String, t: Throwable) {
+        val message = when (t) {
+            is com.tangentlines.reflowcontroller.client.HttpJson.HttpException -> {
+                val apiMsg = try {
+                    val je = JsonParser.parseString(t.body)
+                    if (je.isJsonObject && je.asJsonObject.has("error"))
+                        je.asJsonObject.get("error").asString
+                    else null
+                } catch (_: Exception) { null }
+                buildString {
+                    append("Server error ${t.code}")
+                    if (!apiMsg.isNullOrBlank()) append(": ").append(apiMsg)
+                }
+            }
+            else -> t.message ?: t.javaClass.simpleName
+        }
+        JOptionPane.showMessageDialog(
+            window,
+            message,
+            "Error: $title",
+            JOptionPane.ERROR_MESSAGE
+        )
+    }
 
-        if(ask){
 
+    private fun executeAction(
+        title: String,
+        ask: Boolean = false,
+        success: Boolean = false,
+        action: () -> Boolean
+    ) {
+        if (ask) {
             val result = JOptionPane.showConfirmDialog(window, "Start action '$title'?", "Start", JOptionPane.YES_NO_OPTION)
-            if(result == JOptionPane.YES_OPTION) {
-                executeAction(title, false, success, action)
+            if (result == JOptionPane.YES_OPTION) {
+                executeAction(title, ask = false, success = success, action = action)
             }
             return
-
         }
 
-        val result = action.invoke()
-        if(!result){
-
-            JOptionPane.showMessageDialog(window, "Unable to execute action: $title", "Error", JOptionPane.ERROR_MESSAGE);
-
-        } else if(success && result){
-
-            JOptionPane.showMessageDialog(window, "$title successfully executed", "Success", JOptionPane.INFORMATION_MESSAGE);
-
+        try {
+            val result = action.invoke()
+            if (!result) {
+                JOptionPane.showMessageDialog(window, "Unable to execute action: $title", "Error", JOptionPane.ERROR_MESSAGE)
+            } else if (success) {
+                JOptionPane.showMessageDialog(window, "$title successfully executed", "Success", JOptionPane.INFORMATION_MESSAGE)
+            }
+        } catch (t: Throwable) {
+            showActionError(title, t)
         }
-
     }
 
     private fun enableRecursive(component : Component, value : Boolean) {

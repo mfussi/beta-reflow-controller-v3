@@ -11,9 +11,9 @@ private const val CMD_MANUAL = "manual"
 private val REGEX_TEMP = "([+-][0-9\\\\.]+)C".toRegex()
 private val REGEX_SHORT = "([a-zA-Z0-9 ]+),([0-9]+),([+-][0-9\\\\.]+),C".toRegex()
 
-class BetaLayoutDevice(port : String) : AbstractDevice() {
+class BetaLayoutDevice(private val port : String) : AbstractDevice() {
 
-    private val connector = COMConnector(port, 9600, SerialPort.DATABITS_8, SerialPort.STOPBITS_1, SerialPort.PARITY_NONE)
+    private val connector = COMConnector(9600, SerialPort.DATABITS_8, SerialPort.STOPBITS_1, SerialPort.PARITY_NONE)
 
     private var currentTemperature : Float = 0.0f
     private var currentPulse : Float = 0.0f
@@ -28,7 +28,7 @@ class BetaLayoutDevice(port : String) : AbstractDevice() {
     }
 
     override fun connect(): Boolean {
-        return connector.connect()
+        return connector.connect(port)
     }
 
     override fun disconnect(): Boolean {

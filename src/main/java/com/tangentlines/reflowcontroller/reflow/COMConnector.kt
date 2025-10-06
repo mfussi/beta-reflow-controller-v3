@@ -10,15 +10,14 @@ import java.io.OutputStream
 
 const val FAKE_IDENTIFIER = "Fake Device"
 
-class COMConnector(private val port : String, private val baudRate : Int, val dataBits : Int, val stopBits : Int, val parity : Int) {
+class COMConnector(private val baudRate : Int, val dataBits : Int, val stopBits : Int, val parity : Int) {
 
-    private var isConnected = false
+    @Volatile private var isConnected = false
+    @Volatile private var serialPort: SerialPort? = null
+    @Volatile private var inStream: InputStream? = null
+    @Volatile private var outStream: OutputStream? = null
 
-    private var outputStream: OutputStream? = null
-    private var inputStream: InputStream? = null
     private var serialReader: SerialReader? = null
-    private var commPort: CommPort? = null
-    private var serialReaderThread : Thread? = null
 
     var onNewLine: ((String) -> Unit)? = null
 
@@ -45,67 +44,62 @@ class COMConnector(private val port : String, private val baudRate : Int, val da
         return isConnected
     }
 
-    open fun close() : Boolean {
+    @Synchronized
+    fun connect(portName: String): Boolean {
+        if (serialPort != null) return true // already open
+
+        var opened: SerialPort? = null
+        try {
+            val id = CommPortIdentifier.getPortIdentifier(portName)
+            if (id.isCurrentlyOwned) throw gnu.io.PortInUseException()
+
+            opened = id.open("ReflowController", /*timeout ms*/ 2000) as gnu.io.SerialPort
+            opened.setSerialPortParams(baudRate, dataBits, stopBits, parity)
+            opened.flowControlMode = SerialPort.FLOWCONTROL_NONE
+
+            // only publish fields AFTER all of the above succeeds
+            serialPort = opened
+            inStream = opened.inputStream
+            outStream = opened.outputStream
+
+            // attach listeners here if you use them; if any step throws, we’ll close in catch/finally
+            // opened.addEventListener(...); opened.notifyOnDataAvailable(true)
+
+            return true
+        } catch (t: Throwable) {
+            // full cleanup on ANY error
+            runCatching { opened?.removeEventListener() }
+            runCatching { inStream?.close() }
+            runCatching { outStream?.close() }
+            runCatching { opened?.close() }
+            serialPort = null; inStream = null; outStream = null
+            throw t
+        }
+    }
+
+    @Synchronized
+    fun close(): Boolean {
 
         if(isConnected) {
-
             isConnected = false
 
             serialReader?.isStopped = true
-            serialReaderThread?.stop()
+            serialReader?.stop()
+            serialReader = null
 
-            inputStream?.close()
-            outputStream?.close()
-            //commPort?.close()
-
-            commPort = null
+            val sp = serialPort
+            serialPort = null
+            runCatching { sp?.removeEventListener() }
+            runCatching { inStream?.close() }
+            runCatching { outStream?.close() }
+            runCatching { sp?.close() }
+            inStream = null; outStream = null
             return true
 
         }
 
         return true
 
-    }
-
-    open fun connect(): Boolean {
-
-        if(isConnected) return false
-
-        try {
-            val portIdentifier = CommPortIdentifier.getPortIdentifier(port)
-            if (portIdentifier.isCurrentlyOwned) {
-                println("Error: Port is currently in use")
-            } else {
-
-                commPort = portIdentifier.open("Connector", 2000)
-
-                if (commPort is SerialPort) {
-                    val serialPort = commPort as SerialPort
-                    serialPort.setSerialPortParams(baudRate, dataBits, stopBits, parity)
-
-                    val inputStream = serialPort.getInputStream()
-                    val outputStream = serialPort.getOutputStream()
-
-                    serialReader = SerialReader(this, inputStream)
-                    serialReaderThread = Thread(serialReader)
-                    serialReaderThread!!.start()
-
-                    this.inputStream = inputStream
-                    this.outputStream = outputStream
-
-                    isConnected = true
-                    return true
-
-                } else {
-                    println("Error: Only serial ports are handled")
-                }
-            }
-
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-
-        return false
     }
 
     private var wait = false
@@ -122,7 +116,7 @@ class COMConnector(private val port : String, private val baudRate : Int, val da
 
         try {
 
-            this.outputStream?.write((line + "\r\n").toByteArray(Charsets.US_ASCII))
+            this.outStream?.write((line + "\r\n").toByteArray(Charsets.US_ASCII))
 
         } catch (e: IOException) {
             e.printStackTrace()
@@ -149,7 +143,7 @@ class COMConnector(private val port : String, private val baudRate : Int, val da
 
         try {
 
-            this.outputStream?.write((line + "\r").toByteArray(Charsets.US_ASCII))
+            this.outStream?.write((line + "\r").toByteArray(Charsets.US_ASCII))
 
         } catch (e: IOException) {
             e.printStackTrace()
@@ -199,6 +193,10 @@ private class SerialReader(internal var parent: COMConnector, internal var `in`:
 
     internal var mCallback: Callback? = null
     var isStopped = false;
+
+    fun stop() {
+        isStopped = true
+    }
 
     override fun run() {
 

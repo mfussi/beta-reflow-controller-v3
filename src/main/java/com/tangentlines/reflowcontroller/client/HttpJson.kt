@@ -85,5 +85,7 @@ class HttpJson(private val baseUrl: String,
         return text
     }
 
-    class HttpException(val code: Int, body: String) : RuntimeException("HTTP $code: ${body.take(256)}")
+    class HttpException(val code: Int, val body: String)
+        : RuntimeException("HTTP $code: ${body.take(256)}")
+
 }

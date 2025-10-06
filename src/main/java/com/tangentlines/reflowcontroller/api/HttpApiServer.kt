@@ -197,21 +197,21 @@ class HttpApiServer(
         try {
             ex.responseHeaders.enableCors()
             if (ex.requestMethod.equals("OPTIONS", ignoreCase = true)) {
-                ex.sendResponseHeaders(204, -1); return@HttpHandler
+                ex.sendResponseHeaders(204, -1)
+                return@HttpHandler
             }
             val result = block(ex)
             when (result) {
-                is Response -> ex.sendJson(result.status, result.payload)
-                is Map<*, *> -> ex.sendJson(200, result)
-                is Collection<*> -> ex.sendJson(200, result)
-                is String -> ex.sendJson(200, mapOf("message" to result))
-                null -> { /* route already wrote */ }
-                else -> ex.sendJson(200, result)
+                is Response     -> ex.sendJson(result.status, result.payload)
+                is Map<*, *>    -> ex.sendJson(200, result)
+                is Collection<*>-> ex.sendJson(200, result)
+                is String       -> ex.sendJson(200, mapOf("message" to result))
+                null            -> ex.sendJson(200, mapOf("ok" to true))   // <— ensure a body
+                else            -> ex.sendJson(200, result)
             }
         } catch (e: ApiError) {
             safeSendError(ex, e.statusCode, e.message ?: "error")
         } catch (e: Throwable) {
-            // Catch-all so one bad controller call never kills the server
             e.printStackTrace()
             safeSendError(ex, 500, e.message ?: "internal error")
         } finally {
@@ -259,9 +259,15 @@ class HttpApiServer(
     // Chunked responses are more robust when exceptions happen mid-route
     private fun HttpExchange.sendJson(status: Int, payload: Any) {
         val json = gson.toJson(payload)
-        responseHeaders.add("Content-Type", "application/json; charset=utf-8")
-        sendResponseHeaders(status, -1) // chunked
-        responseBody.use { it.write(json.toByteArray(StandardCharsets.UTF_8)) }
+        val bytes = json.toByteArray(StandardCharsets.UTF_8)
+        responseHeaders.set("Content-Type", "application/json; charset=utf-8")
+        sendResponseHeaders(status, bytes.size.toLong())   // <— fixed length
+        try {
+            responseBody.write(bytes)
+            responseBody.flush()
+        } finally {
+            try { responseBody.close() } catch (_: Exception) {}
+        }
     }
 
     private fun <T> HttpExchange.readDto(clazz: Class<T>): T {
