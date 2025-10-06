@@ -9,6 +9,7 @@ import java.util.*
 import javax.swing.JComponent
 import javax.swing.JFrame
 import javax.swing.SwingUtilities
+import kotlin.math.roundToLong
 
 class ReflowChart(private val backend: BackendWithEvents) {
 
@@ -74,6 +75,9 @@ class ReflowChart(private val backend: BackendWithEvents) {
 
     class SubChart<T : Number>(title : String, private val color : java.awt.Color, axisTitle : String, private val defaultValue: T, private val max : Double, private val mapping: ((State) -> T)) {
 
+        fun secondsToDates(sec: DoubleArray, epochMs: Long = 0L): Array<Date> =
+            Array(sec.size) { i -> Date(epochMs + (sec[i] * 1000.0).roundToLong()) }
+
         val chart: XYChart = XYChartBuilder()
                 .title(title)
                 .xAxisTitle("Time")
@@ -92,6 +96,8 @@ class ReflowChart(private val backend: BackendWithEvents) {
             chart.styler.setYAxisMax(max)
             chart.styler.setYAxisDecimalPattern("0")
 
+            chart.styler.datePattern = "mm:ss"
+
         }
 
         public fun update(entries: List<State>){
@@ -105,8 +111,12 @@ class ReflowChart(private val backend: BackendWithEvents) {
 
             if(entries.isNotEmpty()) {
 
+
+                val xSec = entries.map { it.time.toDouble() / 1000.0f }.toDoubleArray()
+                val x    = secondsToDates(xSec)
+
                 xData?.clear()
-                xData?.addAll(entries.map { Date(it.time) })
+                xData?.addAll(x)
 
                 yData?.clear()
                 yData?.addAll(entries.map { mapping.invoke(it) })

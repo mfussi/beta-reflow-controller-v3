@@ -482,7 +482,7 @@ class HttpApiServer(
             if (ph.time < 0) issues += "$label.time: must be >= 0"
             if (ph.holdFor < 0) issues += "$label.hold_for: must be >= 0"
             if (ph.targetTemperature !in 0f..300f) issues += "$label.target_temperature: expected 0..300"
-            if (ph.intensity !in 0f..1f) issues += "$label.intensity: expected 0.0..1.0"
+            if ((ph.initialIntensity ?: 0f) !in 0f..1f) issues += "$label.intensity: expected 0.0..1.0"
         }
         return issues
     }

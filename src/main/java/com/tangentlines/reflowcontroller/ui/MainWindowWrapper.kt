@@ -9,6 +9,7 @@ import com.tangentlines.reflowcontroller.log.LogEntry
 import com.tangentlines.reflowcontroller.log.ReflowChart
 import com.tangentlines.reflowcontroller.log.export
 import com.tangentlines.reflowcontroller.reflow.profile.Phase
+import com.tangentlines.reflowcontroller.reflow.profile.PhaseType
 import com.tangentlines.reflowcontroller.reflow.profile.ReflowProfile
 import com.tangentlines.reflowcontroller.reflow.profile.loadProfiles
 import org.joda.time.format.DateTimeFormat
@@ -325,10 +326,9 @@ class MainWindowWrapper(private val window : MainWindow, private val controller:
         window.tvActiveIntensity.text = UiFormat.percentagePair(st.activeIntensity, st.intensity, fraction = true)
         window.tvTime.text = UiFormat.duration(st.timeAlive?.let { it / 1000 })
 
-        val phaseTypeStr = when(st.phase?.phaseType()) {
-            Phase.PhaseType.HOLD -> "Hold Temp. For"
-            Phase.PhaseType.TIME -> "Fixed Time"
-            Phase.PhaseType.UNTIL_TEMP -> "Until Temp"
+        val phaseTypeStr = when(st.phase?.type) {
+            PhaseType.HEATING -> "Heating"
+            PhaseType.REFLOW -> "Reflow"
             null -> "-"
         }
 

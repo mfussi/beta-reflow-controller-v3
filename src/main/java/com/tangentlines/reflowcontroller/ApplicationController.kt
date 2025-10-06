@@ -6,6 +6,7 @@ import com.tangentlines.reflowcontroller.log.StateLogger
 import com.tangentlines.reflowcontroller.reflow.COMConnector
 import com.tangentlines.reflowcontroller.reflow.ReflowController
 import com.tangentlines.reflowcontroller.reflow.profile.Phase
+import com.tangentlines.reflowcontroller.reflow.profile.PhaseType
 import com.tangentlines.reflowcontroller.reflow.profile.ReflowProfile
 
 class ApplicationController() {
@@ -30,7 +31,24 @@ class ApplicationController() {
 
                 notifyChanges();
                 Logger.addMessage("${String.format("%.1f °C", connector.getTemperature())} - ${String.format("%.0f %%", connector.getActiveIntensity() * 100.0f)}")
-                StateLogger.add(State(System.currentTimeMillis(), connector.getPhaseName() ?: "unknown", connector.getTemperature(), connector.getActiveIntensity(), connector.getTargetTemperature(), connector.getIntensity()))
+
+                val st = connector.getStartTime()
+
+                if(st != null) {
+
+                    val time = System.currentTimeMillis() - st
+                    StateLogger.add(
+                        State(
+                            time,
+                            connector.getPhaseName() ?: "unknown",
+                            connector.getTemperature(),
+                            connector.getActiveIntensity(),
+                            connector.getTargetTemperature(),
+                            connector.getIntensity()
+                        )
+                    )
+
+                }
 
             }
 
@@ -155,7 +173,7 @@ class ApplicationController() {
         return reflow?.getPort()
     }
 
-    fun getPhaseType(): Phase.PhaseType? {
+    fun getPhaseType(): PhaseType? {
         return reflow?.getPhaseType()
     }
 
