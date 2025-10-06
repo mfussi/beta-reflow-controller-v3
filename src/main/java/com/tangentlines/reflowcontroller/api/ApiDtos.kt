@@ -4,6 +4,7 @@ package com.tangentlines.reflowcontroller.api
 import com.google.gson.annotations.SerializedName
 import com.tangentlines.reflowcontroller.log.LogEntry
 import com.tangentlines.reflowcontroller.log.State
+import com.tangentlines.reflowcontroller.reflow.profile.Phase
 import com.tangentlines.reflowcontroller.reflow.profile.ReflowProfile
 
 // -------- Request DTOs --------
@@ -48,7 +49,10 @@ data class StatusDto(
     @SerializedName("finished") val finished: Boolean?,
     @SerializedName("profileSource") val profileSource: String? = null,
     @SerializedName("profileClient") val profileClient: String? = null,
-    @SerializedName("port") val port: String? = null
+    @SerializedName("port") val port: String? = null,
+    @SerializedName("phaseTime") val phaseTime: Long?,
+    @SerializedName("nextPhaseIn") val nextPhaseIn: Long?,
+    @SerializedName("phaseType") val phaseType: Phase.PhaseType?
 )
 
 data class PortsResponse(@SerializedName("ports") val ports: List<String>)

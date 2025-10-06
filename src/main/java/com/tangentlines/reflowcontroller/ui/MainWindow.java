@@ -19,8 +19,6 @@ public class MainWindow extends JFrame {
     public JPanel panelStatus;
     public JLabel tvTemperature;
     public JLabel tvTime;
-    public JLabel tvTargetTemperature;
-    public JLabel tvIntensity;
     public JPanel panelLog;
     public JTextArea txtLog;
     public JLabel tvCommandSince;
@@ -34,6 +32,7 @@ public class MainWindow extends JFrame {
     public JButton btnClear;
     public JComboBox cbProfile;
     public JLabel tvPhase;
+    public JLabel tvNextPhaseIn;
 
     public MainWindow(ApplicationController controller, int port) {
 

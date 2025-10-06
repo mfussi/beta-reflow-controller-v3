@@ -272,6 +272,45 @@ class ReflowController(port : String) {
         return this.device.getPort()
     }
 
+    fun getPhaseTime() : Long? {
+
+        val profile = reflowProfile ?: return null
+        if(currentReflowProfilePhase == -1) return null
+        if(currentReflowProfilePhase >= profile.getPhases().size) return null
+
+        val phase = profile.getPhases().getOrNull(currentReflowProfilePhase) ?: return null
+
+        return when {
+            phase.time > 0 -> (phase.time * 1000L)
+            phase.holdFor > 0 -> (phase.holdFor * 1000L)
+            else -> null
+        }
+
+    }
+
+    fun getNextPhaseIn(): Long? {
+
+        val profile = reflowProfile ?: return null
+        if(currentReflowProfilePhase == -1) return null
+        if(currentReflowProfilePhase >= profile.getPhases().size) return null
+
+        val phase = profile.getPhases().getOrNull(currentReflowProfilePhase) ?: return null
+        if(phase.targetTemperature > currentTemperature) { return null }
+
+        return when {
+            phase.time > 0 -> (phase.time * 1000L) - (getTimeSinceCommand() ?: 0L)
+            phase.holdFor > 0 -> (phase.holdFor * 1000L) - (getTimeSinceTempOver() ?: 0L)
+            else -> null
+        }
+
+     }
+
+    fun getPhaseType(): Phase.PhaseType? {
+        val profile = reflowProfile ?: return null
+        val phase = profile.getPhases().getOrNull(currentReflowProfilePhase) ?: return null
+        return phase.phaseType()
+    }
+
 }
 
 private class UpdateTask(private val controller : ReflowController) : TimerTask() {

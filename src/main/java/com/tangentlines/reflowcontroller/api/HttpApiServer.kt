@@ -392,7 +392,10 @@ class HttpApiServer(
             finished            = safe(false) { controller.isFinished() },
             profileSource       = if (running) lastProfileSource else null,
             profileClient       = if (running) lastProfileClient else null,
-            port                = controller.getPort()
+            port                = controller.getPort(),
+            phaseTime           = controller.getPhaseTime(),
+            nextPhaseIn         = controller.getNextPhaseIn(),
+            phaseType           = controller.getPhaseType()
         )
     }
 

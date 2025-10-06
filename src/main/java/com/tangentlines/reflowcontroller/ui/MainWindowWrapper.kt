@@ -8,6 +8,7 @@ import com.tangentlines.reflowcontroller.client.RemoteControllerBackend
 import com.tangentlines.reflowcontroller.log.LogEntry
 import com.tangentlines.reflowcontroller.log.ReflowChart
 import com.tangentlines.reflowcontroller.log.export
+import com.tangentlines.reflowcontroller.reflow.profile.Phase
 import com.tangentlines.reflowcontroller.reflow.profile.ReflowProfile
 import com.tangentlines.reflowcontroller.reflow.profile.loadProfiles
 import org.joda.time.format.DateTimeFormat
@@ -331,15 +332,21 @@ class MainWindowWrapper(private val window : MainWindow, private val controller:
         enableRecursive(window.btnStart, st.connected == true && st.running != true)
         enableRecursive(window.btnStop, st.running == true)
 
-        window.tvPhase.text = st.phase ?: "-"
-        window.tvTemperature.text = st.temperature?.let { String.format("%.1f", st.temperature) } ?: "-"
-        window.tvIntensity.text = st.intensity?.let { String.format("%.1f", (it * 100)) } ?: "-"
-        window.tvActiveIntensity.text = st.activeIntensity?.let { String.format("%.1f", (it * 100)) } ?: "-"
-        window.tvTargetTemperature.text = st.targetTemperature ?.toString() ?: "-"
-        window.tvTime.text = st.timeAlive?.let { (it / 1000).toString() } ?: "-"
+        window.tvPhase.text = phaseTrailHtml(currentPhaseNameFrom(st))
+        window.tvTemperature.text = UiFormat.tempPair(st.temperature, st.targetTemperature)
+        window.tvActiveIntensity.text = UiFormat.percentagePair(st.activeIntensity, st.intensity, fraction = true)
+        window.tvTime.text = UiFormat.duration(st.timeAlive?.let { it / 1000 })
 
-        window.tvTempOver.text = st.timeSinceTempOver?.let { (it / 1000).toString() } ?: "-"
-        window.tvCommandSince.text = st.timeSinceCommand?.let { (it / 1000).toString() } ?: "-"
+        val phaseTypeStr = when(st.phaseType) {
+            Phase.PhaseType.HOLD -> "Hold Temp. For"
+            Phase.PhaseType.TIME -> "Fixed Time"
+            Phase.PhaseType.UNTIL_TEMP -> "Until Temp"
+            null -> "-"
+        }
+
+        window.tvNextPhaseIn.text = UiFormat.durationPair(st.nextPhaseIn?.let { it / 1000 }, st.phaseTime?.let { it / 1000 }, postFix = "($phaseTypeStr)")
+        window.tvTempOver.text = UiFormat.duration(st.timeSinceTempOver?.let { (it / 1000) })
+        window.tvCommandSince.text = UiFormat.duration(st.timeSinceCommand?.let { (it / 1000) })
 
         if (st.profile?.name != null) lastProfileName = st.profile.name
         beeper.onTick(st.temperature, st.targetTemperature)
@@ -489,4 +496,27 @@ private sealed class ProfileChoice {
         is LocalGhost -> "Local (external): $name"
     }
 }
+
+// Build "Idle — Preheat — Soak — Finished" with current phase in <b>…</b>
+private fun phaseTrailHtml(current: String?, phases: List<String> = listOf("Idle","Preheat","Soak","Reflow","Finished")): String {
+
+    if(current == "Manual") {
+        return "Manual"
+    }
+
+    val cur = (current ?: "Idle").toLowerCase()
+    val html = phases.joinToString(" — ") { p ->
+        if (p.toLowerCase() == cur) "<b>$p</b>" else p
+    }
+    return "<html>$html</html>"
+}
+
+// Convenience: derive current label from status
+private fun currentPhaseNameFrom(st: com.tangentlines.reflowcontroller.client.StatusDto): String =
+    when {
+        st.profile?.name == "Manual" -> "Manual"
+        st.finished == true -> "Finished"
+        st.running == true && !st.phase.isNullOrBlank() -> st.phase.replaceFirst(st.phase[0].toChar(), st.phase[0].toUpperCase())
+        else -> "Idle"
+    }
 

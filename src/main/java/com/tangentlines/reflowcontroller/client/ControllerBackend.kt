@@ -4,6 +4,7 @@ package com.tangentlines.reflowcontroller.client
 import com.google.gson.JsonObject
 import com.tangentlines.reflowcontroller.log.LogEntry
 import com.tangentlines.reflowcontroller.log.State
+import com.tangentlines.reflowcontroller.reflow.profile.Phase
 import com.tangentlines.reflowcontroller.reflow.profile.ReflowProfile
 
 /**
@@ -52,7 +53,10 @@ data class StatusDto(
     val finished: Boolean? = null,
     val profileSource: String?,
     val profileClient: String?,
-    val port: String?
+    val port: String?,
+    val nextPhaseIn: Long?,
+    val phaseTime: Long?,
+    val phaseType: Phase.PhaseType?
 )
 
 data class LogsDto(

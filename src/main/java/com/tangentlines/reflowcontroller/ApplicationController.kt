@@ -7,7 +7,6 @@ import com.tangentlines.reflowcontroller.reflow.COMConnector
 import com.tangentlines.reflowcontroller.reflow.ReflowController
 import com.tangentlines.reflowcontroller.reflow.profile.Phase
 import com.tangentlines.reflowcontroller.reflow.profile.ReflowProfile
-import java.io.Serializable
 
 class ApplicationController() {
 
@@ -74,6 +73,14 @@ class ApplicationController() {
     fun setTargetTemperature(intensity: Float, temp: Float): Boolean {
         reflow?.setTargetTemperature(intensity, temp)
         return reflow != null
+    }
+
+    fun getNextPhaseIn() : Long? {
+        return reflow?.getNextPhaseIn()
+    }
+
+    fun getPhaseTime() : Long? {
+        return reflow?.getPhaseTime()
     }
 
     fun getIntensity(): Float? {
@@ -144,6 +151,10 @@ class ApplicationController() {
 
     fun getPort(): String? {
         return reflow?.getPort()
+    }
+
+    fun getPhaseType(): Phase.PhaseType? {
+        return reflow?.getPhaseType()
     }
 
 }

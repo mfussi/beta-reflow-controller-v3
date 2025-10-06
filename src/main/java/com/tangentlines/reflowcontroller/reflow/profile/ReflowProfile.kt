@@ -56,12 +56,30 @@ data class Phase(
         val intensity: Float,                           // heating strength (0.0 - 1.0)
 
         @SerializedName("hold_for")
-        val holdFor: Int,                               // seconds the the target temperature needs to be held
+        val holdFor: Int,                               // seconds the target temperature needs to be held
 
         @SerializedName("time")
         val time: Int                                   // length of the phase (0 - no limit)
 
-)
+) {
+
+    fun phaseType() : PhaseType {
+
+        return if(holdFor > 0) {
+            PhaseType.HOLD
+        } else if(time > 0) {
+            PhaseType.TIME
+        } else {
+            PhaseType.UNTIL_TEMP
+        }
+
+    }
+
+    enum class PhaseType {
+        HOLD, TIME, UNTIL_TEMP
+    }
+
+}
 
 fun loadProfiles() : List<ReflowProfile> {
 
