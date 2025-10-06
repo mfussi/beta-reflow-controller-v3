@@ -18,6 +18,7 @@ class COMConnector(private val baudRate : Int, val dataBits : Int, val stopBits 
     @Volatile private var outStream: OutputStream? = null
 
     private var serialReader: SerialReader? = null
+    private var serialReaderThread: Thread? = null
 
     var onNewLine: ((String) -> Unit)? = null
 
@@ -61,9 +62,11 @@ class COMConnector(private val baudRate : Int, val dataBits : Int, val stopBits 
             serialPort = opened
             inStream = opened.inputStream
             outStream = opened.outputStream
+            isConnected = true
 
-            // attach listeners here if you use them; if any step throws, we’ll close in catch/finally
-            // opened.addEventListener(...); opened.notifyOnDataAvailable(true)
+            serialReader = SerialReader(this, inStream!!)
+            serialReaderThread = Thread(serialReader)
+            serialReaderThread!!.start()
 
             return true
         } catch (t: Throwable) {
@@ -86,6 +89,8 @@ class COMConnector(private val baudRate : Int, val dataBits : Int, val stopBits 
             serialReader?.isStopped = true
             serialReader?.stop()
             serialReader = null
+
+            serialReaderThread = null
 
             val sp = serialPort
             serialPort = null
