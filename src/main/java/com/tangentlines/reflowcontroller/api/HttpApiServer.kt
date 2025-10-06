@@ -475,12 +475,15 @@ class HttpApiServer(
     private fun basicValidateProfile(profile: ReflowProfile): List<String> {
         val issues = mutableListOf<String>()
         if (profile.name.isBlank()) issues += "name: must not be blank"
-        val phases: List<Pair<String, Phase>> = listOf("preheat" to profile.preheat, "soak" to profile.soak, "reflow" to profile.reflow)
-        for ((label, ph) in phases) {
+        if (profile.phases.isEmpty()) issues += "phases: must contain at least one phase"
+
+        profile.phases.forEachIndexed { idx, ph ->
+            val label = ph.name.ifBlank { "phase-${idx + 1}" }
+            if (ph.name.isBlank()) issues += "$label.name: must not be blank"
             if (ph.time < 0) issues += "$label.time: must be >= 0"
             if (ph.holdFor < 0) issues += "$label.hold_for: must be >= 0"
-            if (ph.targetTemperature < 0f || ph.targetTemperature > 300f) issues += "$label.target_temperature: expected 0..300"
-            if (ph.intensity < 0f || ph.intensity > 1f) issues += "$label.intensity: expected 0.0..1.0"
+            if (ph.targetTemperature !in 0f..300f) issues += "$label.target_temperature: expected 0..300"
+            if (ph.intensity !in 0f..1f) issues += "$label.intensity: expected 0.0..1.0"
         }
         return issues
     }

@@ -332,7 +332,7 @@ class MainWindowWrapper(private val window : MainWindow, private val controller:
         enableRecursive(window.btnStart, st.connected == true && st.running != true)
         enableRecursive(window.btnStop, st.running == true)
 
-        window.tvPhase.text = phaseTrailHtml(currentPhaseNameFrom(st))
+        window.tvPhase.text = dynamicPhaseTrailHtml(st.phase, st.profile)
         window.tvTemperature.text = UiFormat.tempPair(st.temperature, st.targetTemperature)
         window.tvActiveIntensity.text = UiFormat.percentagePair(st.activeIntensity, st.intensity, fraction = true)
         window.tvTime.text = UiFormat.duration(st.timeAlive?.let { it / 1000 })
@@ -520,3 +520,24 @@ private fun currentPhaseNameFrom(st: com.tangentlines.reflowcontroller.client.St
         else -> "Idle"
     }
 
+
+private fun dynamicPhaseTrailHtml(
+    current: String?,
+    profile: com.tangentlines.reflowcontroller.reflow.profile.ReflowProfile?
+): String {
+    val base = mutableListOf("Idle")
+    val names = profile?.phases?.map { it.name.ifBlank { "phase" } } ?: listOf("Preheat","Soak","Reflow")
+    base += names
+    base += "Finished"
+
+    val cur = when {
+        current.isNullOrBlank() -> "Idle"
+        else -> current
+    }
+
+    val html = base.joinToString(" — ") { p ->
+        if (p.equals(cur, ignoreCase = true)) "<b>${p.replaceFirst(p[0].toChar(), p[0].toUpperCase())}</b>"
+        else p.replaceFirst(p[0].toChar(), p[0].toUpperCase())
+    }
+    return "<html>$html</html>"
+}

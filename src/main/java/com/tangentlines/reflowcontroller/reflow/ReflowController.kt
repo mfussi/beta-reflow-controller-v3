@@ -95,20 +95,20 @@ class ReflowController(port : String) {
 
         currentReflowProfilePhase += 1
 
-        if(currentReflowProfilePhase >= profile.getPhases().size){
+        if(currentReflowProfilePhase >= profile.phases.size){
 
             setTargetTemperature(0.0f, 0.0f)
 
         } else {
 
-            val phase = profile.getPhases()[currentReflowProfilePhase]
+            val phase = profile.phases[currentReflowProfilePhase]
             setTargetTemperature(phase.intensity, phase.targetTemperature)
         }
 
         Logger.addMessage("Changed to phase: " + profile.getNameForPhase(currentReflowProfilePhase))
 
-        val phase = if(currentReflowProfilePhase > 0 && currentReflowProfilePhase < profile.getPhases().size )profile.getPhases()[currentReflowProfilePhase] else null
-        onNewPhase?.invoke(profile, phase, currentReflowProfilePhase >= profile.getPhases().size)
+        val phase = if(currentReflowProfilePhase > 0 && currentReflowProfilePhase < profile.phases.size )profile.phases[currentReflowProfilePhase] else null
+        onNewPhase?.invoke(profile, phase, currentReflowProfilePhase >= profile.phases.size)
 
     }
 
@@ -123,9 +123,9 @@ class ReflowController(port : String) {
                 goToNextPhase(profile)
             } else {
 
-                if (currentReflowProfilePhase < profile.getPhases().size) {
+                if (currentReflowProfilePhase < profile.phases.size) {
 
-                    val phase = profile.getPhases()[currentReflowProfilePhase]
+                    val phase = profile.phases[currentReflowProfilePhase]
                     holdFor = phase.holdFor;
 
                     if (phase.time > 0 && (getTimeSinceCommand() ?: 0L) > phase.time * 1000L) {
@@ -261,7 +261,7 @@ class ReflowController(port : String) {
 
     fun isFinished(): Boolean? {
         val profile = reflowProfile ?: return false
-        return currentReflowProfilePhase >= profile.getPhases().size
+        return currentReflowProfilePhase >= profile.phases.size
     }
 
     fun getProfile() : ReflowProfile? {
@@ -276,9 +276,9 @@ class ReflowController(port : String) {
 
         val profile = reflowProfile ?: return null
         if(currentReflowProfilePhase == -1) return null
-        if(currentReflowProfilePhase >= profile.getPhases().size) return null
+        if(currentReflowProfilePhase >= profile.phases.size) return null
 
-        val phase = profile.getPhases().getOrNull(currentReflowProfilePhase) ?: return null
+        val phase = profile.phases.getOrNull(currentReflowProfilePhase) ?: return null
 
         return when {
             phase.time > 0 -> (phase.time * 1000L)
@@ -292,9 +292,9 @@ class ReflowController(port : String) {
 
         val profile = reflowProfile ?: return null
         if(currentReflowProfilePhase == -1) return null
-        if(currentReflowProfilePhase >= profile.getPhases().size) return null
+        if(currentReflowProfilePhase >= profile.phases.size) return null
 
-        val phase = profile.getPhases().getOrNull(currentReflowProfilePhase) ?: return null
+        val phase = profile.phases.getOrNull(currentReflowProfilePhase) ?: return null
         if(phase.targetTemperature > currentTemperature) { return null }
 
         return when {
@@ -307,7 +307,7 @@ class ReflowController(port : String) {
 
     fun getPhaseType(): Phase.PhaseType? {
         val profile = reflowProfile ?: return null
-        val phase = profile.getPhases().getOrNull(currentReflowProfilePhase) ?: return null
+        val phase = profile.phases.getOrNull(currentReflowProfilePhase) ?: return null
         return phase.phaseType()
     }
 

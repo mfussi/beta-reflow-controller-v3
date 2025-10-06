@@ -1,21 +1,33 @@
 {
   "name": "CR11",
-  "preheat": {
-    "target_temperature": 100.0,
-    "intensity": 1.0,
-    "hold_for": 240,
-    "time": 0
-  },
-  "soak": {
-    "target_temperature": 130.0,
-    "intensity": 1.00,
-    "hold_for": 0,
-    "time": 0
-  },
-  "reflow": {
-    "target_temperature": 145.0,
-    "intensity": 1.0,
-    "hold_for": 90,
-    "time": 0
-  }
+  "phases": [
+    {
+      "name": "Start",
+      "target_temperature": 80.0,
+      "intensity": 1.0,
+      "hold_for": 0,
+      "time": 0
+    },
+    {
+      "name": "Preheat",
+      "target_temperature": 100.0,
+      "intensity": 1.0,
+      "hold_for": 240,
+      "time": 0
+    },
+    {
+      "name": "Soak",
+      "target_temperature": 130.0,
+      "intensity": 1.00,
+      "hold_for": 0,
+      "time": 0
+    },
+    {
+      "name": "Reflow",
+      "target_temperature": 145.0,
+      "intensity": 1.0,
+      "hold_for": 90,
+      "time": 0
+    }
+  ]
 }
