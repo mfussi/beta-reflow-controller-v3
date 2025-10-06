@@ -1,4 +1,3 @@
-// File: src/main/java/com/tangentlines/reflowcontroller/api/HttpApiServer.kt
 package com.tangentlines.reflowcontroller.api
 
 import com.google.gson.Gson
@@ -17,6 +16,7 @@ import java.io.InputStreamReader
 import java.net.InetSocketAddress
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.Executors
+import java.util.concurrent.ThreadFactory
 
 class HttpApiServer(
     private val controller: ApplicationController,
@@ -32,68 +32,80 @@ class HttpApiServer(
     fun start() {
         server = HttpServer.create(InetSocketAddress(port), 0)
 
+        // ---- Liveness
+        server.createContext("/api/ping", handler { _ -> ok(mapOf("ok" to true)) })
+
+        // ---- Status (each field is safe)
         server.createContext("/api/status", handler { _ -> ok(buildStatusDto()) })
 
+        // ---- Manual mode
         server.createContext("/api/manual/start", handler { ex ->
             ex.requireMethod("POST")
             if (!hasStartManual) throw NotFound("Manual mode not supported by this build")
-            invokeNoArg(controller, "startManual")
-            val dto = try { ex.readDto(ManualStartRequest::class.java) } catch (_: Exception) { null }
+            ctl("startManual") { invokeNoArg(controller, "startManual") }
+            val dto = runCatching { ex.readDto(ManualStartRequest::class.java) }.getOrNull()
             val temp = dto?.temp
             val intensity = dto?.intensity
-            if (temp != null && intensity != null) controller.setTargetTemperature(intensity, temp)
-            ok(ManualStartResponse(currentMode(), controller.getTargetTemperature(), controller.getIntensity()))
+            if (temp != null && intensity != null) ctl("setTargetTemperature") { controller.setTargetTemperature(intensity, temp) }
+            ok(ManualStartResponse(currentMode(), safe(0f) { controller.getTargetTemperature() }, safe(0f) { controller.getIntensity() }))
         })
 
         server.createContext("/api/manual/set", handler { ex ->
             ex.requireMethod("POST")
             val dto = ex.readDto(ManualSetRequest::class.java)
             if (currentMode() != "manual") throw BadRequest("Not in manual mode")
-            val okSet = controller.setTargetTemperature(dto.intensity, dto.temp)
-            ok(ManualSetResponse(okSet, controller.getTargetTemperature(), controller.getIntensity()))
+            val okSet = ctl("setTargetTemperature") { controller.setTargetTemperature(dto.intensity, dto.temp) }
+            ok(ManualSetResponse(okSet, safe(0f) { controller.getTargetTemperature() }, safe(0f) { controller.getIntensity() }))
         })
 
         server.createContext("/api/manual/stop", handler { _ ->
             if (!hasStopManual) throw NotFound("Manual mode not supported by this build")
-            invokeNoArg(controller, "stopManual")
+            ctl("stopManual") { invokeNoArg(controller, "stopManual") }
             ok(ManualStopResponse(currentMode()))
         })
 
-        server.createContext("/api/ports", handler { _ -> ok(PortsResponse(controller.availablePorts())) })
+        // ---- Ports
+        server.createContext("/api/ports", handler { _ ->
+            ok(PortsResponse(safe(listOf()) { controller.availablePorts() }))
+        })
 
+        // ---- Connect / Disconnect
         server.createContext("/api/connect", handler { ex ->
             ex.requireMethod("POST")
             val dto = ex.readDto(ConnectRequest::class.java)
-            val success = controller.connect(dto.port)
-            ok(ConnectResponse(success, controller.isConnected()))
+            val success = ctl("connect") { controller.connect(dto.port) }
+            ok(ConnectResponse(success, safe(false) { controller.isConnected() }))
         })
 
         server.createContext("/api/disconnect", handler { ex ->
             ex.requireMethod("POST")
-            val success = controller.disconnect()
-            ok(DisconnectResponse(success, controller.isConnected()))
+            val success = ctl("disconnect") { controller.disconnect() }
+            ok(DisconnectResponse(success, safe(false) { controller.isConnected() }))
         })
 
+        // ---- Target
         server.createContext("/api/target", handler { ex ->
             ex.requireMethod("POST")
             val dto = ex.readDto(TargetRequest::class.java)
-            val okSet = controller.setTargetTemperature(dto.intensity, dto.temp)
-            ok(TargetResponse(okSet, controller.getTargetTemperature(), controller.getIntensity()))
+            val okSet = ctl("setTargetTemperature") { controller.setTargetTemperature(dto.intensity, dto.temp) }
+            ok(TargetResponse(okSet, safe(0f) { controller.getTargetTemperature() }, safe(0f) { controller.getIntensity() }))
         })
 
+        // ---- Start profile (name or inline)
         server.createContext("/api/start", handler { ex ->
             ex.requireMethod("POST")
             val dto = ex.readDto(StartRequest::class.java)
             val profile: ReflowProfile = when {
                 dto.profile != null -> dto.profile
-                !dto.profileName.isNullOrBlank() -> loadProfiles().firstOrNull { it.name == dto.profileName }
-                    ?: throw NotFound("Profile '${dto.profileName}' not found")
+                !dto.profileName.isNullOrBlank() -> safe(null as ReflowProfile?) {
+                    loadProfiles().firstOrNull { it.name == dto.profileName }
+                } ?: throw NotFound("Profile '${dto.profileName}' not found")
                 else -> throw BadRequest("Provide either 'profile' or 'profileName'")
             }
             val issues = basicValidateProfile(profile)
             if (issues.isNotEmpty()) throw BadRequest("Profile invalid: $issues")
-            val okStart = controller.start(profile)
-            ok(StartResponse(okStart, controller.isRunning(), controller.getPhase(), currentMode(), profile.name))
+            val okStart = ctl("start") { controller.start(profile) }
+            ok(StartResponse(okStart, safe(false) { controller.isRunning() }, safe<String?>(null) { controller.getPhase() }, currentMode(), profile.name))
         })
 
         server.createContext("/api/start-inline", handler { ex ->
@@ -102,10 +114,11 @@ class HttpApiServer(
             val profile = dto.profile ?: throw BadRequest("Expected 'profile' object")
             val issues = basicValidateProfile(profile)
             if (issues.isNotEmpty()) throw BadRequest("Profile invalid: $issues")
-            val okStart = controller.start(profile)
-            ok(StartResponse(okStart, controller.isRunning(), controller.getPhase(), currentMode(), profile.name))
+            val okStart = ctl("start") { controller.start(profile) }
+            ok(StartResponse(okStart, safe(false) { controller.isRunning() }, safe<String?>(null) { controller.getPhase() }, currentMode(), profile.name))
         })
 
+        // ---- Profiles helpers
         server.createContext("/api/profiles/validate", handler { ex ->
             ex.requireMethod("POST")
             val dto = ex.readDto(ValidateProfileRequest::class.java)
@@ -122,35 +135,64 @@ class HttpApiServer(
                 .replace("/", "_").replace("..", "_")
             val dir = java.io.File("profiles").apply { if (!exists()) mkdirs() }
             val file = java.io.File(dir, saveName)
-            file.writeText(gson.toJson(dto.profile))
+            runCatching { file.writeText(gson.toJson(dto.profile)) }
+                .getOrElse { throw ControllerError("save profile failed: ${it.message}") }
             ok(SaveProfileResponse(true, file.absolutePath))
         })
 
         server.createContext("/api/stop", handler { ex ->
             ex.requireMethod("POST")
-            val okStop = controller.stop()
-            ok(StopResponse(okStop, controller.isRunning()))
+            val okStop = ctl("stop") { controller.stop() }
+            ok(StopResponse(okStop, safe(false) { controller.isRunning() }))
         })
 
-        server.createContext("/api/profiles", handler { _ -> ok(ProfilesResponse(loadProfiles())) })
-        server.createContext("/api/logs/messages", handler { _ -> ok(MessagesResponse(Logger.getMessages())) })
-        server.createContext("/api/logs/states", handler { _ -> ok(StatesResponse(StateLogger.getEntries())) })
-
+        // ---- Lists & logs (safe)
+        server.createContext("/api/profiles", handler { _ ->
+            ok(ProfilesResponse(safe(listOf()) { loadProfiles() }))
+        })
+        server.createContext("/api/logs/messages", handler { _ ->
+            ok(MessagesResponse(safe(listOf()) { Logger.getMessages() }))
+        })
+        server.createContext("/api/logs/states", handler { _ ->
+            ok(StatesResponse(safe(listOf()) { StateLogger.getEntries() }))
+        })
         server.createContext("/api/logs", handler { ex ->
-            if (ex.requestMethod.equals("DELETE", ignoreCase = true)) {
-                ok(AckResponse(controller.clearLogs()))
-            } else if (ex.requestMethod.equals("GET", ignoreCase = true)) {
-                ok(LogsCombinedResponse(Logger.getMessages(), StateLogger.getEntries()))
-            } else throw MethodNotAllowed("Allowed: GET, DELETE")
+            when {
+                ex.requestMethod.equals("DELETE", ignoreCase = true) -> {
+                    val cleared = runCatching { controller.clearLogs() }.getOrDefault(false)
+                    ok(AckResponse(cleared))
+                }
+                ex.requestMethod.equals("GET", ignoreCase = true) -> {
+                    ok(LogsCombinedResponse(
+                        safe(listOf()) { Logger.getMessages() },
+                        safe(listOf()) { StateLogger.getEntries() }
+                    ))
+                }
+                else -> throw MethodNotAllowed("Allowed: GET, DELETE")
+            }
         })
 
-        server.executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors().coerceAtLeast(2))
+        // ---- Executor with uncaught handler (keeps server alive)
+        val threads = Runtime.getRuntime().availableProcessors().coerceAtLeast(2)
+        server.executor = Executors.newFixedThreadPool(threads, object : ThreadFactory {
+            private var idx = 0
+            override fun newThread(r: Runnable): Thread {
+                val t = Thread(r, "http-worker-${idx++}")
+                t.isDaemon = true
+                t.uncaughtExceptionHandler = Thread.UncaughtExceptionHandler { _, e ->
+                    e.printStackTrace()
+                }
+                return t
+            }
+        })
+
         server.start()
-        println("HTTP API started on http://0.0.0.0:$port/api/status")
+        println("HTTP API started on http://0.0.0.0:$port (try /api/ping)")
     }
 
     fun stop() { if (this::server.isInitialized) server.stop(0) }
 
+    // ---------------- Helpers ----------------
     private fun handler(block: (HttpExchange) -> Any?): HttpHandler = HttpHandler { ex ->
         try {
             ex.responseHeaders.enableCors()
@@ -163,13 +205,15 @@ class HttpApiServer(
                 is Map<*, *> -> ex.sendJson(200, result)
                 is Collection<*> -> ex.sendJson(200, result)
                 is String -> ex.sendJson(200, mapOf("message" to result))
-                null -> {}
+                null -> { /* route already wrote */ }
                 else -> ex.sendJson(200, result)
             }
         } catch (e: ApiError) {
             safeSendError(ex, e.statusCode, e.message ?: "error")
-        } catch (e: Exception) {
-            e.printStackTrace(); safeSendError(ex, 500, e.message ?: "internal error")
+        } catch (e: Throwable) {
+            // Catch-all so one bad controller call never kills the server
+            e.printStackTrace()
+            safeSendError(ex, 500, e.message ?: "internal error")
         } finally {
             try { ex.responseBody.close() } catch (_: Exception) {}
             try { ex.close() } catch (_: Exception) {}
@@ -177,44 +221,46 @@ class HttpApiServer(
     }
 
     private fun safeSendError(ex: HttpExchange, code: Int, msg: String) {
-        try { ex.sendJson(code, mapOf("error" to msg)) } catch (_: Exception) {}
+        runCatching { ex.sendJson(code, mapOf("error" to msg)) }
     }
 
     private fun ok(payload: Any) = Response(200, payload)
 
     private fun buildStatusDto(): StatusDto = StatusDto(
-        connected = controller.isConnected(),
-        running = controller.isRunning(),
-        phase = controller.getPhase(),
-        mode = currentMode(),
-        temperature = controller.getTemperature(),
-        targetTemperature = controller.getTargetTemperature(),
-        intensity = controller.getIntensity(),
-        activeIntensity = controller.getActiveIntensity(),
-        timeAlive = controller.getTime(),
-        timeSinceTempOver = controller.getTimeSinceTempOver(),
-        timeSinceCommand = controller.getTimeSinceCommand(),
-        controllerTimeAlive = controller.getControllerTimeAlive(),
-        profile = controller.getProfile(),
-        finished = controller.isFinished()
+        connected           = safe(false) { controller.isConnected() },
+        running             = safe(false) { controller.isRunning() },
+        phase               = safe<String?>(null) { controller.getPhase() },
+        mode                = currentMode(),
+        temperature         = safe(0f) { controller.getTemperature() },
+        targetTemperature   = safe(0f) { controller.getTargetTemperature() },
+        intensity           = safe(0f) { controller.getIntensity() },
+        activeIntensity     = safe(0f) { controller.getActiveIntensity() },
+        timeAlive           = safe(0L) { controller.getTime() },
+        timeSinceTempOver   = safe(0L) { controller.getTimeSinceTempOver() },
+        timeSinceCommand    = safe(0L) { controller.getTimeSinceCommand() },
+        controllerTimeAlive = safe(0) { controller.getControllerTimeAlive() },
+        profile             = safe(null as ReflowProfile?) { controller.getProfile() },
+        finished            = safe(false) { controller.isFinished() }
     )
 
     private fun currentMode(): String {
         return try {
             if (hasIsManual) {
-                val isManual = (invokeNoArg(controller, "isManual") as? Boolean) ?: (invokeNoArg(controller, "isManualMode") as? Boolean)
+                val isManual = (runCatching { invokeNoArg(controller, "isManual") }.getOrNull() as? Boolean)
+                    ?: (runCatching { invokeNoArg(controller, "isManualMode") }.getOrNull() as? Boolean)
                 if (isManual == true) return "manual"
             }
-            if (controller.isRunning()) "profile" else "idle"
-        } catch (_: Exception) { if (controller.isRunning()) "profile" else "idle" }
+            if (safe(false) { controller.isRunning() }) "profile" else "idle"
+        } catch (_: Exception) { if (safe(false) { controller.isRunning() }) "profile" else "idle" }
     }
 
     private inner class Response(val status: Int, val payload: Any)
 
+    // Chunked responses are more robust when exceptions happen mid-route
     private fun HttpExchange.sendJson(status: Int, payload: Any) {
         val json = gson.toJson(payload)
         responseHeaders.add("Content-Type", "application/json; charset=utf-8")
-        sendResponseHeaders(status, json.toByteArray(StandardCharsets.UTF_8).size.toLong())
+        sendResponseHeaders(status, -1) // chunked
         responseBody.use { it.write(json.toByteArray(StandardCharsets.UTF_8)) }
     }
 
@@ -222,9 +268,8 @@ class HttpApiServer(
         InputStreamReader(requestBody, StandardCharsets.UTF_8).use {
             val text = it.readText().trim()
             if (text.isEmpty()) throw BadRequest("Missing JSON body")
-            try { return gson.fromJson(text, clazz) } catch (e: Exception) {
-                throw BadRequest("Invalid JSON: ${e.message}")
-            }
+            return runCatching { gson.fromJson(text, clazz) }
+                .getOrElse { throw BadRequest("Invalid JSON: ${it.message}") }
         }
     }
 
@@ -237,6 +282,14 @@ class HttpApiServer(
         add("Access-Control-Allow-Headers", "Content-Type, Authorization")
         add("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
     }
+
+    // Controller call guard -> always turns controller exceptions into 500 responses
+    private inline fun <T> ctl(op: String, block: () -> T): T =
+        try { block() } catch (e: Throwable) { throw ControllerError("$op failed: ${e.message ?: e::class.simpleName}") }
+
+    // Safe getter for status (keeps the server answering even if a field explodes)
+    private inline fun <T> safe(default: T, get: () -> T): T =
+        try { get() } catch (_: Throwable) { default }
 
     private fun basicValidateProfile(profile: ReflowProfile): List<String> {
         val issues = mutableListOf<String>()
@@ -264,3 +317,4 @@ private open class ApiError(message: String, val statusCode: Int) : RuntimeExcep
 private class BadRequest(message: String) : ApiError(message, 400)
 private class NotFound(message: String) : ApiError(message, 404)
 private class MethodNotAllowed(message: String) : ApiError(message, 405)
+private class ControllerError(message: String) : ApiError(message, 500)
