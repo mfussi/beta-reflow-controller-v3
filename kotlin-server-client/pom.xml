@@ -6,7 +6,7 @@
 
     <groupId>com.tangentlines</groupId>
     <artifactId>reflowcontroller</artifactId>
-    <version>0.3</version>
+    <version>1.0</version>
 
     <properties>
         <kotlin.version>1.3.61</kotlin.version>
