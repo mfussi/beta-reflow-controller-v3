@@ -1,0 +1,56 @@
+{
+  "name": "CR11@fake-device",
+  "description": "",
+  "phases": [
+    {
+      "name": "Preheat",
+      "type": "heating",
+      "target_temperature": 80.0,
+      "time": 120,
+      "hold_for": 0,
+      "initial_intensity": 0.9,
+      "max_slope": 2.0,
+      "max_temperature": null
+    },
+    {
+      "name": "Soak",
+      "type": "heating",
+      "target_temperature": 110.0,
+      "time": 120,
+      "hold_for": 0,
+      "initial_intensity": 0.45,
+      "max_slope": null,
+      "max_temperature": null
+    },
+    {
+      "name": "Pre-Reflow",
+      "type": "heating",
+      "target_temperature": 180.0,
+      "time": 30,
+      "hold_for": 0,
+      "initial_intensity": 1.0,
+      "max_slope": null,
+      "max_temperature": null
+    },
+    {
+      "name": "Reflow",
+      "type": "reflow",
+      "target_temperature": 140.0,
+      "time": 0,
+      "hold_for": 60,
+      "initial_intensity": 1.0,
+      "max_slope": null,
+      "max_temperature": 160.0
+    },
+    {
+      "name": "Cooling",
+      "type": "cooling",
+      "target_temperature": 0.0,
+      "time": 30,
+      "hold_for": 0,
+      "initial_intensity": null,
+      "max_slope": null,
+      "max_temperature": null
+    }
+  ]
+}
