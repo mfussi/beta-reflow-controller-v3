@@ -148,6 +148,22 @@ class ApplicationController() {
 
     }
 
+    // ApplicationController.kt
+    fun startManual(temp: Float?, intensity: Float?): Boolean {
+        Logger.clear()
+        StateLogger.clear()
+        reflow?.setProfile(null)
+
+        val ok = reflow?.startService() ?: false
+        if (!ok) return false
+
+        // Set the manual target once the device loop is active
+        if (temp != null && intensity != null) {
+            reflow?.setTargetTemperature(intensity.coerceIn(0f, 1f), temp)
+        }
+        return true
+    }
+    
     fun stop(): Boolean {
 
         return reflow?.setProfile(null) == true

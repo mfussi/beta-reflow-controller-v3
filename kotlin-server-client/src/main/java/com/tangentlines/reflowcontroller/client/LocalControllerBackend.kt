@@ -14,8 +14,7 @@ class LocalControllerBackend(private val controller: ApplicationController) : Co
     override fun disconnect(): Boolean = controller.disconnect()
 
     override fun startManual(temp: Float?, intensity: Float?): Boolean {
-        controller.start(null)
-        if (temp != null && intensity != null) controller.setTargetTemperature(intensity, temp)
+        controller.startManual(intensity, temp)
         return true
     }
 

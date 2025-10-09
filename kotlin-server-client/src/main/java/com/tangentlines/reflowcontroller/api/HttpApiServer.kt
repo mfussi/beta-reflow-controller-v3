@@ -140,8 +140,7 @@ class HttpApiServer(
                 val temp = dto.temp
                 val intensity = dto.intensity
 
-                ctl("start") { controller.start(null) }
-                if (temp != null && intensity != null) ctl("setTargetTemperature") { controller.setTargetTemperature(intensity, temp) }
+                ctl("start") { controller.startManual(intensity, temp) }
                 return@handler true
 
             }
