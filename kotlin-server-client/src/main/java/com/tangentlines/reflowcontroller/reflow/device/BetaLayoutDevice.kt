@@ -15,13 +15,12 @@ class BetaLayoutDevice(private val port : String) : AbstractDevice() {
 
     private val connector = COMConnector(9600, SerialPort.DATABITS_8, SerialPort.STOPBITS_1, SerialPort.PARITY_NONE)
 
-    private var currentTemperature : Float = 0.0f
-    private var currentPulse : Float = 0.0f
-
-    private var serviceRunning : Boolean = false
+    @Volatile private var serviceRunning: Boolean = false
+    @Volatile private var lastShot: Long = 0L
+    @Volatile private var currentPulse: Float = 0.0f
+    @Volatile private var currentTemperature: Float = 0.0f
 
     private var timer : Timer? = null
-    private var lastShot : Long = 0L
 
     override fun getPort(): String {
         return port
@@ -36,6 +35,7 @@ class BetaLayoutDevice(private val port : String) : AbstractDevice() {
     }
 
     override fun disconnect(): Boolean {
+        stop()
         return connector.close()
     }
 
@@ -44,40 +44,44 @@ class BetaLayoutDevice(private val port : String) : AbstractDevice() {
     }
 
     override fun start(): Boolean {
+        if (serviceRunning) return false
+        if (!isConnected()) return false
 
-        if(!serviceRunning) {
+        var init = true
+        init = init && requestManual(true)                   // enable manual mode
+        init = init && requestTemperatureUpdate(1)          // one second temperature updates
 
-            var init = true
-            init = init && requestManual(true)                   // enable manual mode
-            init = init && requestTemperatureUpdate(1)          // one second temperature updates
+        if (init) {
+            serviceRunning = true
 
-            if (init) {
+            timer = Timer("beta-loop", true)
+            timer!!.scheduleAtFixedRate(object : TimerTask() {
 
-                timer = Timer()
-                timer!!.schedule(loopTask, 0L, 100L)
+                override fun run() {
+                    try {
+                        onLoop.invoke()
+                    } catch (t: Throwable) {
+                        // log if you have a logger; avoid crashing the timer thread
+                    }
+                }
 
-                serviceRunning = true
-                return true
-            }
+            }, 0L, 100L)
+            return true
 
         }
 
         return false
+
     }
 
     override fun stop(): Boolean {
-
-        if(serviceRunning) {
-
-            timer?.cancel()
-            timer = null
-
-            serviceRunning = false
-            return true
-        }
-
+        if (!serviceRunning) return true
+        serviceRunning = false
+        timer?.cancel()
+        timer?.purge()
+        timer = null
+        lastShot = 0L
         return true
-
     }
 
     override fun isStarted(): Boolean {
@@ -153,20 +157,15 @@ class BetaLayoutDevice(private val port : String) : AbstractDevice() {
 
     }
 
-    private val loopTask = object : TimerTask() {
+    private val onLoop : (() -> Unit) = {
+        if(serviceRunning && currentPulse != 0.0f){
 
-        override fun run() {
-
-            if(serviceRunning && currentPulse != 0.0f){
-
-                if(lastShot + 1010L < System.currentTimeMillis()){
-                    requestShot(currentPulse)
-                }
-
+            if(lastShot + 1010L < System.currentTimeMillis()){
+                requestShot(currentPulse)
             }
 
         }
-
     }
+
 
 }
