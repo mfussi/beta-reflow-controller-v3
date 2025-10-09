@@ -2,4 +2,6 @@
 /export
 /target
 *.log
+.kotlin
+.java-version
 
