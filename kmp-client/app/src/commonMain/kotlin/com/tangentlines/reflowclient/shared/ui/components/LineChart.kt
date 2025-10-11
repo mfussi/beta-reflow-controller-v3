@@ -22,6 +22,7 @@ import io.github.koalaplot.core.xygraph.AxisStyle
 import io.github.koalaplot.core.xygraph.CategoryAxisModel
 import io.github.koalaplot.core.xygraph.DefaultPoint
 import io.github.koalaplot.core.xygraph.DoubleLinearAxisModel
+import io.github.koalaplot.core.xygraph.HorizontalLineAnnotation
 import io.github.koalaplot.core.xygraph.VerticalLineAnnotation
 import io.github.koalaplot.core.xygraph.XYGraph
 import io.github.koalaplot.core.xygraph.XYGraphScope
@@ -88,7 +89,8 @@ data class ChartDataBase(
     val tempPointsB: List<Pair<Long, Float>>,
     val intensityPointsA: List<Pair<Long, Float>>,
     val intensityPointsB: List<Pair<Long, Float>>,
-    val profileTemp: List<Pair<Long, Float>>?
+    val profileTemp: List<Pair<Long, Float>>?,
+    val reflowAt: Float?,
 )
 
 fun createChartData(
@@ -196,7 +198,8 @@ fun createChartData(
         tempPointsB = tempPointsB,
         intensityPointsA = intensityPointsA,
         intensityPointsB = intensityPointsB,
-        profileTemp = profileTemp
+        profileTemp = profileTemp,
+        reflowAt = profile?.reflowAt
     )
 }
 
@@ -249,7 +252,8 @@ fun TemperatureChart(base : ChartDataBase?) {
         yLabel = { "${it.toInt()}°C" },
         minYValue = 0.0,
         maxYValue =  maxValue.toDouble(),
-        verticalLines = base.phaseCuts
+        verticalLines = base.phaseCuts,
+        horizontalLines = listOfNotNull(base.reflowAt?.toDouble())
     )
 
 
@@ -269,7 +273,8 @@ fun LineChart(
     yLabel: ((Double) -> String),
     minYValue: Double = 0.0,
     maxYValue: Double = 300.0,
-    verticalLines: List<Double> = emptyList()
+    verticalLines: List<Double> = emptyList(),
+    horizontalLines: List<Double> = emptyList(),
 ) {
     Column(Modifier.fillMaxWidth().padding(8.dp)) {
         title?.let { Text(it, style = MaterialTheme.typography.titleMedium) }
@@ -317,6 +322,10 @@ fun LineChart(
 
                 verticalLines.forEach {
                     this.VerticalLineAnnotation(it, LineStyle(SolidColor(Color.Black)))
+                }
+
+                horizontalLines.forEach {
+                    this.HorizontalLineAnnotation(it, LineStyle(SolidColor(Color.Red)))
                 }
 
                 series.forEach { s ->
