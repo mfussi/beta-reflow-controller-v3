@@ -237,6 +237,7 @@ fun TemperatureChart(base : ChartDataBase?) {
         base.profileTemp?.maxOfOrNull { it.second },
         base.tempPointsA.maxOfOrNull { it.second },
         base.tempPointsB.maxOfOrNull { it.second },
+        base.reflowAt
     ).maxOfOrNull { it } ?: 300.0f) * 1.2f
 
     val baseColor = MaterialTheme.colorScheme.primary
