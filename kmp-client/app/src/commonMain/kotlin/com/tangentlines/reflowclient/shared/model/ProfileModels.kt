@@ -27,6 +27,7 @@ data class EditablePhase(
 data class EditableProfile(
     @SerialName("name") val name: String = "",
     @SerialName("description") val description: String? = null,
+    @SerialName("reflow_at") val reflowAt: Float? = null,
     @SerialName("phases") val phases: List<EditablePhase> = emptyList()
 )
 
@@ -35,6 +36,7 @@ fun EditableProfile.toWire(): ReflowProfile {
     return ReflowProfile(
         name = name.trim(),
         description = description?.trim(),
+        reflowAt = reflowAt,
         phases = phases.map { ep ->
             Phase(
                 name = ep.name.trim(),

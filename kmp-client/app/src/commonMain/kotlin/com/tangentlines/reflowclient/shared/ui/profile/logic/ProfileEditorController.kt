@@ -25,6 +25,8 @@ interface ProfileEditorController {
     val state: StateFlow<EditorState>
     fun setName(name: String)
     fun setDescription(desc: String)
+
+    fun setReflowAt(value: Float)
     fun addPhase()
     fun duplicatePhase(index: Int)
     fun removePhase(index: Int)
@@ -70,6 +72,10 @@ fun rememberProfileEditorController(
 
         override fun setDescription(desc: String) {
             _state.update { recalc(it.profile.copy(description = desc.ifBlank { null }), dirty = true) }
+        }
+
+        override fun setReflowAt(value: Float) {
+            _state.update { recalc(it.profile.copy(reflowAt = if(value == 0.0f) null else value), dirty = true) }
         }
 
         override fun addPhase() {
@@ -178,6 +184,7 @@ fun rememberProfileEditorController(
             val editable = EditableProfile(
                 name = profile.name,
                 description = profile.description,
+                reflowAt =  profile.reflowAt,
                 phases = profile.phases.map { p ->
                     EditablePhase(
                         name = p.name,

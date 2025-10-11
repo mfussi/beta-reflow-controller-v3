@@ -21,6 +21,9 @@ data class ReflowProfile(
     @SerializedName("description")
     val description: String?,
 
+    @SerializedName("reflow_at")
+    val reflowAt: Float?,
+
     @SerializedName("phases")
     val phases: List<Phase>
 ) {

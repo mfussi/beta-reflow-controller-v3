@@ -78,6 +78,10 @@ fun ProfileEditor(
             maxLines = 4
         )
 
+        FloatField("Reflow Temp Temperature (°C)", state.profile.reflowAt ?: 0f) { v ->
+            controller.setReflowAt(v)
+        }
+
         Spacer(Modifier.height(16.dp))
 
         // Phases list

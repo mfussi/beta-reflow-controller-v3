@@ -24,9 +24,17 @@ data class Phase(
 
 @Serializable
 data class ReflowProfile(
+    @SerialName("name")
     val name: String,
-    val description: String? = null,
-    val phases: List<Phase> = listOf()
+
+    @SerialName("description")
+    val description: String?,
+
+    @SerialName("reflow_at")
+    val reflowAt: Float?,
+
+    @SerialName("phases")
+    val phases: List<Phase>
 )
 
 @Serializable data class StatusDto(
