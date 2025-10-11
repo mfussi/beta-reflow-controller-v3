@@ -43,6 +43,8 @@ data class ReflowProfile(
     val phase: Int? = null,
     val mode: String? = null,
     val temperature: Float? = null,
+
+    val slope: Float? = null,
     val targetTemperature: Float? = null,
     val intensity: Float? = null,
     val activeIntensity: Float? = null,

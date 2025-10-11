@@ -142,6 +142,14 @@ fun mapStatusRows(s: StatusDto): List<StatusRow> {
         )
     )
 
+    rows += StatusRow(
+        label = asLabel("Slope"),
+        value = valueNumberWithUnit(
+            num = s.slope.f1(),        unit = "°C/sec",
+        ),
+        tone = Tone.Neutral
+    )
+
     // Timers
     rows += StatusRow(label = asLabel("Over-Temp"),  value = bold(durationMs(s.timeSinceTempOver)))
     rows += StatusRow(label = asLabel("Last Cmd"),   value = bold(durationMs(s.timeSinceCommand)))
