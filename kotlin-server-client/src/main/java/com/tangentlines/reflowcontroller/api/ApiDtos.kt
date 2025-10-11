@@ -35,6 +35,7 @@ data class StatusDto(
     @SerializedName("phase") val phase: Int?,
     @SerializedName("mode") val mode: String,
     @SerializedName("temperature") val temperature: Float?,
+    @SerializedName("slope") val slope: Float?,
     @SerializedName("targetTemperature") val targetTemperature: Float?,
     @SerializedName("intensity") val intensity: Float?,
     @SerializedName("activeIntensity") val activeIntensity: Float?,

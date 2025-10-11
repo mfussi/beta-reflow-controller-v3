@@ -43,6 +43,7 @@ class LocalControllerBackend(private val controller: ApplicationController) : Co
             if (controller.isRunning()) if(isManual) "manual" else "profile" else "idle"
         } catch (_: Exception) { "idle" },
         temperature = controller.getTemperature(),
+        slope = controller.getTemperatureSlopeCPerS(),
         targetTemperature = controller.getTargetTemperature(),
         intensity = controller.getIntensity(),
         activeIntensity = controller.getActiveIntensity(),

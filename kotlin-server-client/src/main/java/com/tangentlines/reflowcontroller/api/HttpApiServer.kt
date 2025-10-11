@@ -407,6 +407,7 @@ class HttpApiServer(
             phase               = safe<Int?>(null) { controller.getPhase() },
             mode                = currentMode(),
             temperature         = safe(0f) { controller.getTemperature() },
+            slope               = safe(0f) { controller.getTemperatureSlopeCPerS() },
             targetTemperature   = safe(0f) { controller.getTargetTemperature() },
             intensity           = safe(0f) { controller.getIntensity() },
             activeIntensity     = safe(0f) { controller.getActiveIntensity() },

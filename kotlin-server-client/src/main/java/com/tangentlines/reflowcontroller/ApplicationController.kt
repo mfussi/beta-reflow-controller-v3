@@ -108,6 +108,10 @@ class ApplicationController() {
         return reflow?.getTemperature()
     }
 
+    fun getTemperatureSlopeCPerS(): Float? {
+        return reflow?.getTemperatureSlopeCPerS()
+    }
+
     fun getTargetTemperature(): Float? {
         return reflow?.getTargetTemperature()
     }
@@ -163,7 +167,7 @@ class ApplicationController() {
         }
         return true
     }
-    
+
     fun stop(): Boolean {
 
         return reflow?.setProfile(null) == true

@@ -30,6 +30,8 @@ class ReflowController(port : String) {
     private var overTarget: Boolean = false
     private var holdAboveMs: Long = 0L
     private var lastTickMs: Long = 0L
+    private var lastTempForSlope: Float? = null
+    private var tempSlopeCPerS: Float? = null
 
     private fun f1(x: Float) = String.format(Locale.US, "%.1f", x)
     private fun f2(x: Float) = String.format(Locale.US, "%.2f", x)
@@ -114,6 +116,8 @@ class ReflowController(port : String) {
         return currentTemperature
     }
 
+    fun getTemperatureSlopeCPerS(): Float? = tempSlopeCPerS
+
     fun getTimeAlive() : Long? {
         return startTime?.let { (stopTime ?: System.currentTimeMillis()) - it }
     }
@@ -129,8 +133,16 @@ class ReflowController(port : String) {
         val idx = currentReflowProfilePhase
         val phase = if (profile != null && idx in profile!!.phases.indices) profile!!.phases[idx] else null
 
+        // Existing:
         val dt = if (lastTickMs == 0L) 0L else (now - lastTickMs)
         lastTickMs = now
+
+        if (dt > 0L) {
+            tempSlopeCPerS = lastTempForSlope?.let { prev ->
+                (currentTemp - prev) / (dt.toFloat() / 1000f)  // °C per second
+            }
+        }
+        lastTempForSlope = currentTemp
 
         // We are in manual mode - apply simple update code
         if(reflowProfile == null) {
