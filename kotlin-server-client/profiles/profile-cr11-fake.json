@@ -1,7 +1,7 @@
 {
   "name": "CR11@fake-device",
   "description": "",
-  "liquidus_temperature": 140.0,
+  "liquidus_temperature": 138.0,
   "phases": [
     {
       "type": "heating",
@@ -31,7 +31,6 @@
     {
       "type": "reflow",
       "name": "Reflow",
-      "threshold_c": 140.0,
       "hold_for": 60,
       "min_temperature": 138.0,
       "target_temperature": 150.0,

@@ -99,7 +99,7 @@ class ProfileExecutor(
 
             PhaseType.REFLOW -> {
                 // 1) track “above reflow threshold”
-                val thr = ph.targetTemperature
+                val thr = ph.minTemperature ?: ph.targetTemperature
                 if (!aboveThreshold && tMeasC >= thr + H_UP) {
                     aboveThreshold = true
                 } else if (aboveThreshold && tMeasC <= thr - H_DN) {

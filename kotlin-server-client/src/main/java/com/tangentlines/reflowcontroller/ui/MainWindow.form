@@ -345,7 +345,7 @@
               </grid>
             </constraints>
             <properties>
-              <text value="&gt; Liquidus"/>
+              <text value="Temp &gt;= Liquidus"/>
             </properties>
           </component>
           <component id="c8150" class="javax.swing.JLabel" binding="tvLiquidus">
