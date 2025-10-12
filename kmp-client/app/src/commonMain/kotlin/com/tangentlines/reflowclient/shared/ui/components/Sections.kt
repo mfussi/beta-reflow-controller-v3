@@ -228,6 +228,8 @@ fun ManualControlCard(
             Text("Target temperature", style = MaterialTheme.typography.bodyMedium)
             Text("${localTemp.roundToInt()}°C", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold))
         }
+
+        val ranget = 0f..300f
         Spacer(Modifier.height(8.dp))
         Slider(
             value = localTemp,
@@ -235,7 +237,8 @@ fun ManualControlCard(
                 localTemp = it
                 onChange(localTemp, localIntensity)
             },
-            valueRange = 0f..300f,
+            steps = ((ranget.endInclusive - ranget.start) / 5).toInt(),
+            valueRange = ranget,
             colors = SliderDefaults.colors().copy(
                 inactiveTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
             )
@@ -249,12 +252,14 @@ fun ManualControlCard(
             Text("${(localIntensity * 100f).roundToInt()}%", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold))
         }
         Spacer(Modifier.height(8.dp))
+
         Slider(
             value = localIntensity,
             onValueChange = {
                 localIntensity = it
                 onChange(localTemp, localIntensity)
             },
+            steps = 20,
             valueRange = 0f..1f,
             colors = SliderDefaults.colors().copy(
                 inactiveTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)

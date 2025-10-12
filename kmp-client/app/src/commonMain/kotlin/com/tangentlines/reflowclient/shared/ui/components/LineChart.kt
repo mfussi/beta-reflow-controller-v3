@@ -199,7 +199,7 @@ fun createChartData(
         intensityPointsA = intensityPointsA,
         intensityPointsB = intensityPointsB,
         profileTemp = profileTemp,
-        reflowAt = profile?.reflowAt
+        reflowAt = profile?.liquidusTemperature
     )
 }
 
@@ -298,6 +298,15 @@ fun LineChart(
             val xMax = (allTimes.maxOrNull() ?: (60*5)).toInt()
             val step = 1
 
+            val maxLabels = 20
+            var labelStep : Int = 30
+            var labelCount : Int = Int.MAX_VALUE
+
+            while(labelCount > maxLabels) {
+                labelCount = ((xMax - xMin) / labelStep)
+                labelStep += 30
+            }
+
             XYGraph(
                 xAxisModel = CategoryAxisModel(steppedRangeInclusive(xMin, xMax, step)),
                 yAxisModel = DoubleLinearAxisModel(minYValue..maxYValue, minimumMajorTickSpacing = 50.dp),
@@ -309,7 +318,7 @@ fun LineChart(
                 xAxisLabels = {
 
                     val duration = it.toInt()
-                    if(duration % 30 == 0) {
+                    if(duration % labelStep == 0) {
                         val minutes = (duration / 60)
                         val seconds = duration - (minutes * 60)
                         XLabel("${minutes.twoDigits()}:${seconds.twoDigits()}")

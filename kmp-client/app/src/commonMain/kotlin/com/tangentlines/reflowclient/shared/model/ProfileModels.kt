@@ -20,14 +20,17 @@ data class EditablePhase(
     @SerialName("max_slope") val maxSlope: Float? = null,
 
     // REFLOW: cap temperature
-    @SerialName("max_temperature") val maxTemperature: Float? = null
+    @SerialName("max_temperature") val maxTemperature: Float? = null,
+
+    @SerialName("min_temperature") val minTemperature: Float? = null
+
 )
 
 @Serializable
 data class EditableProfile(
     @SerialName("name") val name: String = "",
     @SerialName("description") val description: String? = null,
-    @SerialName("reflow_at") val reflowAt: Float? = null,
+    @SerialName("liquidus_temperature") val liquidusTemperature: Float? = null,
     @SerialName("phases") val phases: List<EditablePhase> = emptyList()
 )
 
@@ -36,7 +39,7 @@ fun EditableProfile.toWire(): ReflowProfile {
     return ReflowProfile(
         name = name.trim(),
         description = description?.trim(),
-        reflowAt = reflowAt,
+        liquidusTemperature = liquidusTemperature,
         phases = phases.map { ep ->
             Phase(
                 name = ep.name.trim(),
@@ -46,7 +49,8 @@ fun EditableProfile.toWire(): ReflowProfile {
                 holdFor = ep.holdFor,
                 initialIntensity = ep.initialIntensity,
                 maxSlope = ep.maxSlope,
-                maxTemperature = ep.maxTemperature
+                maxTemperature = ep.maxTemperature,
+                minTemperature = ep.minTemperature
             )
         }
     )

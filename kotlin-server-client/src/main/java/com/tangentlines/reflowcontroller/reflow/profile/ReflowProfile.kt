@@ -21,8 +21,8 @@ data class ReflowProfile(
     @SerializedName("description")
     val description: String?,
 
-    @SerializedName("reflow_at")
-    val reflowAt: Float?,
+    @SerializedName("liquidus_temperature")
+    val liquidusTemperature: Float?,
 
     @SerializedName("phases")
     val phases: List<Phase>
@@ -57,7 +57,8 @@ data class Phase(
     @SerializedName("max_slope") val maxSlope: Float? = null,
 
     // REFLOW: cap temperature
-    @SerializedName("max_temperature") val maxTemperature: Float? = null
+    @SerializedName("max_temperature") val maxTemperature: Float? = null,
+    @SerializedName("min_temperature") val minTemperature: Float? = null
 )
 
 /** Load all profiles from ./profiles (new schema only). */

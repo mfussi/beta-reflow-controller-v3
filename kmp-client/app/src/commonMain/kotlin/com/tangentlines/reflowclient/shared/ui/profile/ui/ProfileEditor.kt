@@ -78,8 +78,8 @@ fun ProfileEditor(
             maxLines = 4
         )
 
-        FloatField("Reflow Temp Temperature (°C)", state.profile.reflowAt ?: 0f) { v ->
-            controller.setReflowAt(v)
+        FloatField("Liquidus Temperature (°C)", state.profile.liquidusTemperature ?: 0f) { v ->
+            controller.setLiquidusTemperature(v)
         }
 
         Spacer(Modifier.height(16.dp))
@@ -250,5 +250,10 @@ private fun PhaseEditorRow(
         FloatField("Max Temperature (°C)", phase.maxTemperature ?: 0f) { v ->
             onChange { it.copy(maxTemperature = v.takeIf { !it.isNaN() && it > 0f }) }
         }
+
+        FloatField("Min Temperature (°C)", phase.maxTemperature ?: 0f) { v ->
+            onChange { it.copy(minTemperature = v.takeIf { !it.isNaN() && it > 0f }) }
+        }
+
     }
 }

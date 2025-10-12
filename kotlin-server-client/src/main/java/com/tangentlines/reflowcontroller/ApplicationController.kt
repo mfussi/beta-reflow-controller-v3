@@ -152,7 +152,6 @@ class ApplicationController() {
 
     }
 
-    // ApplicationController.kt
     fun startManual(temp: Float?, intensity: Float?): Boolean {
         Logger.clear()
         StateLogger.clear()

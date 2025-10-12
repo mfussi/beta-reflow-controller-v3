@@ -19,7 +19,8 @@ data class Phase(
     @SerialName("hold_for") val holdFor: Int,
     @SerialName("initial_intensity") val initialIntensity: Float?,
     @SerialName("max_slope") val maxSlope: Float?,
-    @SerialName("max_temperature") val maxTemperature: Float?
+    @SerialName("max_temperature") val maxTemperature: Float?,
+    @SerialName("min_temperature") val minTemperature: Float?,
 )
 
 @Serializable
@@ -30,8 +31,8 @@ data class ReflowProfile(
     @SerialName("description")
     val description: String?,
 
-    @SerialName("reflow_at")
-    val reflowAt: Float?,
+    @SerialName("liquidus_temperature")
+    val liquidusTemperature: Float?,
 
     @SerialName("phases")
     val phases: List<Phase>
@@ -43,7 +44,6 @@ data class ReflowProfile(
     val phase: Int? = null,
     val mode: String? = null,
     val temperature: Float? = null,
-
     val slope: Float? = null,
     val targetTemperature: Float? = null,
     val intensity: Float? = null,
