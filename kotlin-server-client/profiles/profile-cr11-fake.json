@@ -18,7 +18,7 @@
       "target_temperature": 110.0,
       "time": 120,
       "time_min": 90,
-      "initial_intensity": 0.45
+      "initial_intensity": 0.55
     },
     {
       "type": "heating",
