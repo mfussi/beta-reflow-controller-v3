@@ -324,6 +324,7 @@ class MainWindowWrapper(private val window : MainWindow, private val controller:
         window.tvTemperature.text = UiFormat.tempPair(st.temperature, st.targetTemperature)
         window.tvActiveIntensity.text = UiFormat.percentagePair(st.activeIntensity, st.intensity, fraction = true)
         window.tvTime.text = UiFormat.duration(st.timeAlive?.let { it / 1000 })
+        window.tvSlope.text = st.slope?.let { UiFormat.num(it, 1, Locale.ENGLISH) + " °C/sec" } ?: "-"
 
         val phaseTypeStr = when(st.phase?.type) {
             PhaseType.HEATING -> "Heating"

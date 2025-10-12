@@ -57,6 +57,6 @@ object UiFormat {
     }
 
     // ---------- Helpers ----------
-    private fun num(v: Float, decimals: Int, locale: Locale): String =
+    fun num(v: Float, decimals: Int, locale: Locale): String =
         String.format(locale, "%.${decimals}f", v)
 }

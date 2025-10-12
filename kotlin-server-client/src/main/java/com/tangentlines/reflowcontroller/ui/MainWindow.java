@@ -33,6 +33,7 @@ public class MainWindow extends JFrame {
     public JComboBox cbProfile;
     public JLabel tvPhase;
     public JLabel tvNextPhaseIn;
+    public JLabel tvSlope;
 
     public MainWindow(ApplicationController controller, int port) {
 
