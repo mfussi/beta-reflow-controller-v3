@@ -50,7 +50,7 @@ data class StatusDto(
     @SerializedName("port") val port: String? = null,
     @SerializedName("phaseTime") val phaseTime: Long?,
     @SerializedName("nextPhaseIn") val nextPhaseIn: Long?,
-    @SerializedName("timeAboveLiquidusMs") val timeAboveLiquidusMs: Long?,
+    @SerializedName("timeAboveLiquidusMs") val timeAboveLiquidusMs: Long?
 )
 
 data class PortsResponse(@SerializedName("ports") val ports: List<String>)
