@@ -23,9 +23,9 @@
     {
       "type": "heating",
       "name": "Pre-Reflow",
-      "target_temperature": 135.0,
+      "target_temperature": 138.0,
       "time": 30,
-      "time_min": 30,
+      "time_min": 0,
       "initial_intensity": 1.0
     },
     {
@@ -33,10 +33,10 @@
       "name": "Reflow",
       "threshold_c": 140.0,
       "hold_for": 60,
-      "min_temperature": 140.0,
+      "min_temperature": 138.0,
       "target_temperature": 150.0,
       "max_temperature": 160.0,
-      "initial_intensity": 1.0
+      "initial_intensity": 0.8
     },
     {
       "type": "cooling",
