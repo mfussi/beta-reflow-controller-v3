@@ -61,6 +61,9 @@ class ReflowController(port: String) {
     var onTempChanged: (() -> Unit)? = null
     var onNewPhase: ((ReflowProfile, Phase?, Boolean) -> Unit)? = null
 
+    private var aboveLiquidusSinceMs: Long? = null
+    private var timeAboveLiquidusMs: Long = 0L
+
     // ---- Logging helpers
     private fun f1(x: Float) = String.format(Locale.US, "%.1f", x)
     private fun logMsg(s: String) { try { Logger.addMessage(s) } catch (_: Exception) {} }
@@ -196,6 +199,9 @@ class ReflowController(port: String) {
     /** Historical helper kept for API compatibility (unused in new executor flow). */
     fun getTimeSinceTempOver(): Long? = null
 
+    fun getTimeAboveLiquidusMs(): Long? =
+        reflowProfile?.liquidusTemperature?.let { timeAboveLiquidusMs }
+
     fun getTimeSinceCommand(): Long? =
         if (started) lastCommandAtMs?.let { System.currentTimeMillis() - it } else null
 
@@ -212,6 +218,20 @@ class ReflowController(port: String) {
 
         val profile = reflowProfile
         val tMeas   = getTemperature()
+
+        reflowProfile?.liquidusTemperature?.let { liq ->
+            if (currentTemperature >= liq) {
+                if (aboveLiquidusSinceMs == null) {
+                    aboveLiquidusSinceMs = now
+                }
+                // continuous time since first crossing
+                timeAboveLiquidusMs = now - (aboveLiquidusSinceMs ?: now)
+            } else {
+                // dropped below: reset continuous counter
+                aboveLiquidusSinceMs = null
+                timeAboveLiquidusMs = 0L
+            }
+        }
 
         // --- Manual mode
         if (profile == null) {
@@ -361,6 +381,9 @@ class ReflowController(port: String) {
                 updateTask = UpdateTask(this)
                 timer = Timer()
                 timer!!.schedule(updateTask!!, 0, UPDATE_INTERVAL)
+
+                aboveLiquidusSinceMs = null
+                timeAboveLiquidusMs = 0L
 
                 started = true
                 return true

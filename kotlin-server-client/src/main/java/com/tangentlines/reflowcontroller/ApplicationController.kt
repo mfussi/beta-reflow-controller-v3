@@ -112,6 +112,10 @@ class ApplicationController() {
         return reflow?.getTemperatureSlopeCPerS()
     }
 
+    fun getTimeAboveLiquidusMs(): Long? {
+        return reflow?.getTimeAboveLiquidusMs()
+    }
+
     fun getTargetTemperature(): Float? {
         return reflow?.getTargetTemperature()
     }

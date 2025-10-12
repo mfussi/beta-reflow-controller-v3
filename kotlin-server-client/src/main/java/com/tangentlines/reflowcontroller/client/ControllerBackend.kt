@@ -56,7 +56,8 @@ data class StatusDto(
     val profileClient: String?,
     val port: String?,
     val nextPhaseIn: Long?,
-    val phaseTime: Long?
+    val phaseTime: Long?,
+    val timeAboveLiquidusMs: Long?
 )
 
 data class LogsDto(

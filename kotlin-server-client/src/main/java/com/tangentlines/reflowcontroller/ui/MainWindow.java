@@ -34,6 +34,7 @@ public class MainWindow extends JFrame {
     public JLabel tvPhase;
     public JLabel tvNextPhaseIn;
     public JLabel tvSlope;
+    public JLabel tvLiquidus;
 
     public MainWindow(ApplicationController controller, int port) {
 

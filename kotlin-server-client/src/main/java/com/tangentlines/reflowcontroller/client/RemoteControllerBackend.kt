@@ -67,7 +67,8 @@ class RemoteControllerBackend(host: String, port: Int, clientKey: String? = null
             profileClient = s.profileClient,
             port = s.port,
             nextPhaseIn = s.nextPhaseIn,
-            phaseTime = s.phaseTime
+            phaseTime = s.phaseTime,
+            timeAboveLiquidusMs = s.timeAboveLiquidusMs
         )
     }
 

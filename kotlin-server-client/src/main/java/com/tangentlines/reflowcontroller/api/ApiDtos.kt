@@ -49,7 +49,8 @@ data class StatusDto(
     @SerializedName("profileClient") val profileClient: String? = null,
     @SerializedName("port") val port: String? = null,
     @SerializedName("phaseTime") val phaseTime: Long?,
-    @SerializedName("nextPhaseIn") val nextPhaseIn: Long?
+    @SerializedName("nextPhaseIn") val nextPhaseIn: Long?,
+    @SerializedName("timeAboveLiquidusMs") val timeAboveLiquidusMs: Long?,
 )
 
 data class PortsResponse(@SerializedName("ports") val ports: List<String>)

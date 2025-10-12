@@ -421,7 +421,8 @@ class HttpApiServer(
             profileClient       = if (running) lastProfileClient else null,
             port                = controller.getPort(),
             phaseTime           = controller.getPhaseTime(),
-            nextPhaseIn         = controller.getNextPhaseIn()
+            nextPhaseIn         = controller.getNextPhaseIn(),
+            timeAboveLiquidusMs = controller.getTimeAboveLiquidusMs()
         )
     }
 
