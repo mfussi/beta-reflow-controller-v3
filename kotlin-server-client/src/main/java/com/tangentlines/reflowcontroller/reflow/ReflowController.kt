@@ -4,129 +4,114 @@ import com.tangentlines.reflowcontroller.log.Logger
 import com.tangentlines.reflowcontroller.reflow.device.BetaLayoutDevice
 import com.tangentlines.reflowcontroller.reflow.device.Device
 import com.tangentlines.reflowcontroller.reflow.device.FakeDevice
-import com.tangentlines.reflowcontroller.reflow.executor.*
+import com.tangentlines.reflowcontroller.reflow.executor.ExecOutput
+import com.tangentlines.reflowcontroller.reflow.executor.ManualExecOutput
+import com.tangentlines.reflowcontroller.reflow.executor.ManualExecutor
+import com.tangentlines.reflowcontroller.reflow.executor.ProfileExecutor
+import com.tangentlines.reflowcontroller.reflow.executor.planner.ProfileContext
+import com.tangentlines.reflowcontroller.reflow.executor.planner.SafetyConfig
 import com.tangentlines.reflowcontroller.reflow.profile.Phase
 import com.tangentlines.reflowcontroller.reflow.profile.PhaseType
 import com.tangentlines.reflowcontroller.reflow.profile.ReflowProfile
 import java.util.*
 import kotlin.math.max
 
-private const val UPDATE_INTERVAL = 500L
-private const val BRAKE = 0.75f
-private const val MIN_PULSE_DWELL_MS = 2200L  // min time between pulse changes
+private const val UPDATE_INTERVAL      = 500L   // ms
+private const val MIN_PULSE_DWELL_MS   = 2200L  // min time between pulse changes
 
 class ReflowController(port: String) {
 
-    // ---- Phase & runtime bookkeeping
-    private var phaseStartAt: Long = 0L
-    private var phaseStartTemp: Float = 0f
-    private var baseIntensity: Float = 0.5f
-    private var lastPulseSet: Float = 0.0f
-    private var lastPulseAt: Long = 0L
-    private var lastTickMs: Long = 0L
-
-    // simple logging helpers
-    private fun f1(x: Float) = String.format(Locale.US, "%.1f", x)
-    private fun f2(x: Float) = String.format(Locale.US, "%.2f", x)
-    private fun logMsg(s: String) { try { Logger.addMessage(s) } catch (_: Exception) {} }
-
-    // callbacks
-    var onTempChanged: (() -> Unit)? = null
-    var onNewPhase: ((ReflowProfile, Phase?, Boolean) -> Unit)? = null
-
-    // timers
-    private var timer: Timer? = null
-    private var updateTask: UpdateTask? = null
-
-    // exported status fields
-    private var controllerTimeAlive: Long? = null
-    private var intensity: Float = 1.0f
-    private var targetTemperature: Float? = null
-    private var lastCommand: Long? = null
-    private var connectTime: Long? = null
-    private var startTime: Long? = null
-    private var stopTime: Long? = null
-
-    // sensors
-    private var currentTemperature: Float = -1.0f
-
-    // profile/phase
-    private var reflowProfile: ReflowProfile? = null
-    private var currentReflowProfilePhase: Int = -1
-
-    // service gate
-    private var started: Boolean = false
-
-    // ---- New: planner/regulator/slope
-    private var planner: PhasePlanner? = null
-    private var lastPlanAux: PlannerAux? = null
-    private val regulator = DefaultIntensityRegulator()
-    private val slope = SlopeTracker()
-    private var lastSlopeCPerS: Float = 0f
-
-    // Construct a ProfileContext from the loaded profile
-    private fun buildProfileContext(): ProfileContext {
-        val liq = reflowProfile?.liquidusTemperature ?: 217f
-        val absMax = (reflowProfile?.phases?.mapNotNull { it.maxTemperature }?.max() ?: 260f)
-            .coerceAtLeast(230f)
-        return ProfileContext(
-            liquidusTemperatureC = liq,
-            safety = SafetyConfig(absoluteMaxTemperature = absMax, sensorFaultHysteresisS = 3)
-        )
-    }
-
-    // Simple planner factory (swappable if you want to inject)
-    private fun newPlannerFor(ph: Phase): PhasePlanner = when (ph.type) {
-        PhaseType.HEATING, PhaseType.COOLING -> HeatingCoolingPlanner()
-        PhaseType.REFLOW                     -> ReflowPlanner()
-    }
-
-    // device binding
+    // ---- Device binding
     private val device: Device = when (port) {
         FAKE_IDENTIFIER -> FakeDevice(FAKE_IDENTIFIER)
         else            -> BetaLayoutDevice(port)
     }
 
+    // ---- Executors
+    private var manualExec: ManualExecutor? = null
+    private var profileExec: ProfileExecutor? = null
+
+    // ---- Phase/runtime bookkeeping
+    private var currentPhaseIdx: Int = -1
+    private var phaseStartAtMs: Long = 0L
+
+    private var lastPulseSet: Float = 0f
+    private var lastPulseAt: Long = 0L
+    private var lastTickMs: Long = 0L
+
+    // ---- Exported status fields (mirrors)
+    private var reflowProfile: ReflowProfile? = null
+    private var currentTemperature: Float = -1f
+
+    private var controllerTimeAlive: Long? = null
+    private var connectTime: Long? = null
+    private var startTime: Long? = null
+    private var stopTime: Long? = null
+
+    private var intensityOut: Float = 0f                   // last commanded 0..1
+    private var targetTemperatureC: Float? = null          // for UI
+    private var lastCommandAtMs: Long? = null
+
+    // ---- Service / scheduling
+    private var started: Boolean = false
+    private var timer: Timer? = null
+    private var updateTask: UpdateTask? = null
+
+    // ---- Callbacks
+    var onTempChanged: (() -> Unit)? = null
+    var onNewPhase: ((ReflowProfile, Phase?, Boolean) -> Unit)? = null
+
+    // ---- Logging helpers
+    private fun f1(x: Float) = String.format(Locale.US, "%.1f", x)
+    private fun logMsg(s: String) { try { Logger.addMessage(s) } catch (_: Exception) {} }
+
+    private data class TempSample(val ms: Long, val c: Float)
+    private val slopeWindowMs = 30_000L
+    private val tempWindow = ArrayDeque<TempSample>()
+    private var slopeCPerS: Float? = null
+
     init {
         device.addOnTemperatureChanged {
-            this.currentTemperature = device.getTemperature()
+            currentTemperature = device.getTemperature()
             onTempChanged?.invoke()
         }
     }
 
-    // ---- Connection gates
+    // -------------------------------------------------------------------------
+    // Public gates
+    // -------------------------------------------------------------------------
+
     fun connect(): Boolean {
         val ok = device.connect()
         if (ok) connectTime = System.currentTimeMillis()
         return ok
     }
 
-    fun disconnect(): Boolean {
-        return device.disconnect()
-    }
-
+    fun disconnect(): Boolean = device.disconnect()
     fun isConnected(): Boolean = device.isConnected()
 
-    // ---- Profile / manual mode gates
+    /** Set profile (null = manual mode). Resets phase machine to “not started”. */
     fun setProfile(profile: ReflowProfile?): Boolean {
         reflowProfile = profile
-        currentReflowProfilePhase = -1
+        currentPhaseIdx = -1
         return true
     }
 
+    /** Manual mode input; only used when profile is null. */
     fun setTargetTemperature(intensity: Float, temperature: Float): Boolean {
-        // manual mode target
-        this.targetTemperature = temperature
-        this.intensity = intensity.coerceIn(0f, 1f)
-        this.lastCommand = System.currentTimeMillis()
+        targetTemperatureC = temperature
+        intensityOut = intensity.coerceIn(0f, 1f)
+        lastCommandAtMs = System.currentTimeMillis()
         return true
     }
 
-    // ---- Status getters
-    fun getTargetTemperature(): Float? = targetTemperature
-    fun getIntensity(): Float = intensity
+    // -------------------------------------------------------------------------
+    // Status getters (kept for API compatibility)
+    // -------------------------------------------------------------------------
+
+    fun getTargetTemperature(): Float? = targetTemperatureC
+    fun getIntensity(): Float = intensityOut
     fun getTemperature(): Float = currentTemperature
-    fun getTemperatureSlopeCPerS(): Float? = lastSlopeCPerS
     fun getTimeAlive(): Long? = startTime?.let { (stopTime ?: System.currentTimeMillis()) - it }
     fun getControllerTimeAlive(): Long? = controllerTimeAlive
     fun getActiveIntensity(): Float = device.getPulse()
@@ -135,205 +120,240 @@ class ReflowController(port: String) {
     fun getPort(): String? = device.getPort()
     fun getStartTime(): Long? = startTime
 
-    fun getPhase(): Int? =
-        if (reflowProfile == null) -1 else currentReflowProfilePhase
+    fun getPhase(): Int? = if (reflowProfile == null) -1 else currentPhaseIdx
 
     fun getPhaseName(): String? {
         val idx = getPhase()
         return when {
-            idx == null                 -> "Manual"
-            idx == -1                   -> "Manual"
-            reflowProfile == null       -> "Manual"
+            idx == null                   -> "Manual"
+            idx == -1                     -> "Manual"
+            reflowProfile == null         -> "Manual"
             idx > reflowProfile!!.phases.size -> "Finished"
-            else                        -> reflowProfile!!.getNameForPhase(idx)
+            else                          -> reflowProfile!!.getNameForPhase(idx)
         }
     }
 
     fun isFinished(): Boolean? {
         val p = reflowProfile ?: return false
-        return currentReflowProfilePhase >= p.phases.size
+        return currentPhaseIdx >= p.phases.size
     }
 
     fun getPhaseType(): PhaseType? {
         val p = reflowProfile ?: return null
-        return p.phases.getOrNull(currentReflowProfilePhase)?.type
+        return p.phases.getOrNull(currentPhaseIdx)?.type
     }
 
-    /** Rough remaining time using planner aux (TAL) or phase time goal if available. */
+    /** Rough remaining time:
+     *  - HEATING/COOLING: time goal minus elapsed (if time > 0)
+     *  - REFLOW: unknown (depends on time above threshold), returns null
+     */
     fun getNextPhaseIn(): Long? {
         val p = reflowProfile ?: return null
-        val idx = currentReflowProfilePhase
-        if (idx == -1 || idx >= p.phases.size) return null
+        val idx = currentPhaseIdx
+        if (idx < 0 || idx >= p.phases.size) return null
         val ph = p.phases[idx]
-
-        val sinceCmd = getTimeSinceCommand() ?: 0L
-        val byTime = if (ph.time > 0) ph.time * 1000L - sinceCmd else Long.MAX_VALUE
-
-        val auxTal = lastPlanAux?.talMs
-        val byHold = if (ph.holdFor > 0 && auxTal != null) ph.holdFor * 1000L - auxTal else Long.MAX_VALUE
-
-        val next = minOf(byTime, byHold)
-        return if (next == Long.MAX_VALUE) null else max(0L, next)
+        return when (ph.type) {
+            PhaseType.REFLOW  -> null // depends on threshold crossing; report unknown
+            else -> if (ph.time > 0) {
+                val el = max(0L, System.currentTimeMillis() - phaseStartAtMs)
+                (ph.time * 1000L - el).coerceAtLeast(0L)
+            } else null
+        }
     }
 
     fun getPhaseTime(): Long? {
         val p = reflowProfile ?: return null
-        if (currentReflowProfilePhase == -1) return null
-        val ph = p.phases.getOrNull(currentReflowProfilePhase) ?: return null
+        val idx = currentPhaseIdx
+        val ph = p.phases.getOrNull(idx) ?: return null
         return when {
-            ph.time > 0     -> (ph.time * 1000L)
-            ph.holdFor > 0  -> (ph.holdFor * 1000L)
+            ph.time > 0     -> ph.time * 1000L
+            ph.holdFor > 0  -> ph.holdFor * 1000L
             else            -> null
         }
     }
 
-    fun getTimeSinceCommand(): Long? =
-        if (started) lastCommand?.let { System.currentTimeMillis() - it } else null
+    private fun resetSlopeWindow(nowMs: Long, tempC: Float) {
+        tempWindow.clear()
+        tempWindow.addLast(TempSample(nowMs, tempC))
+        slopeCPerS = null
+    }
 
-    // ---- Main update loop
+    private fun sampleSlope(nowMs: Long, tempC: Float) {
+        tempWindow.addLast(TempSample(nowMs, tempC))
+        val cutoff = nowMs - slopeWindowMs
+        while (tempWindow.size >= 2 && tempWindow.first().ms < cutoff) {
+            tempWindow.removeFirst()
+        }
+        val first = tempWindow.firstOrNull()
+        val last = tempWindow.lastOrNull()
+        slopeCPerS = if (first != null && last != null && last.ms > first.ms) {
+            (last.c - first.c) / ((last.ms - first.ms) / 1000f)
+        } else null
+    }
+
+    fun getTemperatureSlopeCPerS(): Float? = slopeCPerS
+
+    /** Historical helper kept for API compatibility (unused in new executor flow). */
+    fun getTimeSinceTempOver(): Long? = null
+
+    fun getTimeSinceCommand(): Long? =
+        if (started) lastCommandAtMs?.let { System.currentTimeMillis() - it } else null
+
+    // -------------------------------------------------------------------------
+    // Main loop
+    // -------------------------------------------------------------------------
+
     fun update() {
         val now = System.currentTimeMillis()
-        val curT = getTemperature()
-
-        val dt = if (lastTickMs == 0L) 0L else (now - lastTickMs)
+        val dt  = if (lastTickMs == 0L) 0L else (now - lastTickMs)
         lastTickMs = now
 
-        lastSlopeCPerS = slope.sample(curT, now)
+        sampleSlope(now, currentTemperature)
 
         val profile = reflowProfile
-        val idx = currentReflowProfilePhase
-        val phase = if (profile != null && idx in profile.phases.indices) profile.phases[idx] else null
+        val tMeas   = getTemperature()
 
-        // ---- Manual mode
+        // --- Manual mode
         if (profile == null) {
-            val tTemp = targetTemperature
-            if (tTemp == null) {
-                device.setPulse(0.0f)
-            } else {
-                when {
-                    curT < tTemp - 10 * BRAKE -> device.setPulse(intensity * 1.0f)
-                    curT < tTemp - 3 * BRAKE  -> device.setPulse(intensity * 0.5f)
-                    curT < tTemp              -> device.setPulse(intensity * 0.3f)
-                    else                      -> device.setPulse(0.0f)
-                }
+
+            if(manualExec == null) {
+                manualExec = ManualExecutor()
+            }
+
+            val res: ManualExecOutput? = manualExec?.update(
+                dtMs = dt,
+                nowMs = now,
+                tMeasC = tMeas,
+                targetTempC = targetTemperatureC,
+                baseIntensity = intensityOut
+            )
+
+            if(res != null) {
+                targetTemperatureC = res.targetForUiC // identical to manual target
+                applyOutput(res.intensity)
             }
             return
         }
 
-        // ---- Profile mode (planner + regulator)
-        if (currentReflowProfilePhase == -1) {
-            goToNextPhase(profile)   // will call onPhaseStart for phase 0
-            return
-        } else if (currentReflowProfilePhase >= profile.phases.size) {
-            // finished
-            setPulseIfChanged(0f)
-            targetTemperature = null
-            return
-        }
-
-        // Active phase: ask planner for current plan; regulator for output
-        val planner = this.planner ?: return
-        val ph = phase!!
-
-        val plan = planner.update(now, curT)
-        lastPlanAux = plan.aux
-
-        // Publish planned temperature as target for UI (heating/reflow dynamic, cooling null)
-        targetTemperature = when (ph.type) {
-            PhaseType.COOLING -> null
-            else              -> plan.tPlanC
-        }
-
-        val out = regulator.compute(
-            nowMs = now,
-            dtMs = dt,
-            tMeasC = curT,
-            dTdtCPerS = lastSlopeCPerS,
-            tPlanC = plan.tPlanC,
-            phase = ph,
-            prevIntensity = lastPulseSet
-        )
-        setPulseIfChanged(out)
-
-        if (plan.phaseCompleted) {
+        // --- Profile mode
+        if (currentPhaseIdx == -1) {
+            // lazy enter: start first phase now
             goToNextPhase(profile)
+            return
+        }
+        if (currentPhaseIdx >= profile.phases.size) {
+            // finished
+            applyOutput(0f)
+            targetTemperatureC = null
+            return
+        }
+
+        // active phase via ProfileExecutor
+        val res: ExecOutput? = profileExec?.update(dtMs = dt, nowMs = now, tMeasC = tMeas)
+        if(res != null) {
+            targetTemperatureC = res.targetForUiC
+            applyOutput(res.intensity)
+
+            if (res.phaseCompleted) {
+                goToNextPhase(profile)
+            }
         }
     }
 
-    // ---- Phase transitions
+    // -------------------------------------------------------------------------
+    // Phase transitions
+    // -------------------------------------------------------------------------
+
     private fun onPhaseStart(ph: Phase) {
         val now = System.currentTimeMillis()
-        phaseStartAt = now
-        phaseStartTemp = getTemperature()
+        phaseStartAtMs = now
+        lastCommandAtMs = now
 
-        baseIntensity = (ph.initialIntensity ?: lastPulseSet.takeIf { it > 0f } ?: 0.5f).coerceIn(0f, 1f)
+        resetSlopeWindow(now, currentTemperature)
 
-        // reset tick/slope
-        lastTickMs = now
-        slope.reset(phaseStartTemp, now)
-
-        // build context & initialize planner/regulator
+        // Build context for this profile
         val ctx = buildProfileContext()
-        planner = newPlannerFor(ph).also { it.reset(now, phaseStartTemp, ph, ctx) }
-        regulator.reset(baseIntensity, ph.maxSlope, ctx.safety)
 
-        // status mirrors
-        lastCommand = now
-        intensity = baseIntensity
-        targetTemperature = when (ph.type) {
-            PhaseType.COOLING -> null
-            else              -> phaseStartTemp // will be updated next tick by planner
+        // Initialize executor
+        if (profileExec == null) {
+            profileExec = ProfileExecutor(context = ctx)
         }
+        profileExec?.startPhase(
+            nowMs = now,
+            startTempC = getTemperature(),
+            ph = ph,
+            lastKnownOut = lastPulseSet
+        )
 
+        // Log
         when (ph.type) {
-            PhaseType.HEATING -> logMsg("phase:start name='${ph.name}' type=heating target=${f1(ph.targetTemperature)}°C time=${ph.time}s baseI=${f2(baseIntensity)} T0=${f1(phaseStartTemp)}°C")
-            PhaseType.REFLOW  -> logMsg("phase:start name='${ph.name}' type=reflow  threshold=${f1(ph.targetTemperature)}°C hold_for=${ph.holdFor}s max=${ph.maxTemperature?.let(::f1) ?: "n/a"}°C baseI=${f2(baseIntensity)} T0=${f1(phaseStartTemp)}°C")
-            PhaseType.COOLING -> logMsg("phase:start name='${ph.name}' type=cooling time=${ph.time}s baseI=0.00 T0=${f1(phaseStartTemp)}°C")
+            PhaseType.HEATING -> logMsg("phase:start name='${ph.name}' type=heating target=${f1(ph.targetTemperature)}°C time=${ph.time}s")
+            PhaseType.REFLOW  -> logMsg("phase:start name='${ph.name}' type=reflow  threshold=${f1(ph.targetTemperature)}°C hold_for=${ph.holdFor}s max=${ph.maxTemperature?.let { f1(it) } ?: "n/a"}°C")
+            PhaseType.COOLING -> logMsg("phase:start name='${ph.name}' type=cooling time=${ph.time}s")
         }
     }
 
     private fun onPhaseEnd(ph: Phase) {
-        // Optional: keep your suggestion logs if you want (requires extra accumulation).
-        // For simplicity we only mark end here.
         logMsg("phase:end name='${ph.name}'")
     }
 
     private fun goToNextPhase(profile: ReflowProfile) {
-        if (currentReflowProfilePhase in profile.phases.indices) {
-            onPhaseEnd(profile.phases[currentReflowProfilePhase])
+        // end current if valid
+        if (currentPhaseIdx in profile.phases.indices) {
+            onPhaseEnd(profile.phases[currentPhaseIdx])
         }
-        currentReflowProfilePhase++
-        if (currentReflowProfilePhase in profile.phases.indices) {
-            val ph = profile.phases[currentReflowProfilePhase]
+        // advance
+        currentPhaseIdx++
+        if (currentPhaseIdx in profile.phases.indices) {
+            val ph = profile.phases[currentPhaseIdx]
             onPhaseStart(ph)
             onNewPhase?.invoke(profile, ph, false)
         } else {
             // finished
-            setPulseIfChanged(0.0f)
-            targetTemperature = null
-            intensity = 0.0f
+            applyOutput(0f)
+            targetTemperatureC = null
+            intensityOut = 0f
             onNewPhase?.invoke(profile, null, true)
             logMsg("profile:finished name='${profile.name}'")
         }
     }
 
-    // ---- Pulse out with dwell
-    private fun setPulseIfChanged(p: Float) {
-        val now = System.currentTimeMillis()
+    // -------------------------------------------------------------------------
+    // Helpers
+    // -------------------------------------------------------------------------
+
+    private fun applyOutput(p: Float) {
         val np = p.coerceIn(0f, 1f)
+        val now = System.currentTimeMillis()
         val dwellOk = now - lastPulseAt >= MIN_PULSE_DWELL_MS
         if (lastPulseAt == 0L || (np != lastPulseSet && dwellOk)) {
             device.setPulse(np)
             lastPulseSet = np
             lastPulseAt = now
+            intensityOut = np
         }
     }
 
-    // ---- Service control
+    private fun buildProfileContext(): ProfileContext {
+        val liq = reflowProfile?.liquidusTemperature ?: 217f
+        val absMax = reflowProfile?.phases?.mapNotNull { it.maxTemperature }?.max() ?: 260f
+        return ProfileContext(
+            liquidusTemperatureC = liq,
+            safety = SafetyConfig(
+                absoluteMaxTemperature = absMax.coerceAtLeast(230f),
+                sensorFaultHysteresisS = 3
+            )
+        )
+    }
+
+    // -------------------------------------------------------------------------
+    // Service control
+    // -------------------------------------------------------------------------
+
     fun startService(): Boolean {
         if (!started) {
-            val success = device.start()
-            if (success) {
+            val ok = device.start()
+            if (ok) {
                 startTime = System.currentTimeMillis()
                 stopTime = null
                 currentTemperature = device.getTemperature()
@@ -366,9 +386,6 @@ class ReflowController(port: String) {
         }
         return false
     }
-
-    // Historical helpers kept for API compatibility
-    fun getTimeSinceTempOver(): Long? = null // handled via planner aux if you want; not used directly now
 
     private class UpdateTask(private val controller: ReflowController) : TimerTask() {
         var isStopped = false

@@ -48,6 +48,7 @@ data class Phase(
     // Common
     @SerializedName("target_temperature") val targetTemperature: Float, // REFLOW=threshold
     @SerializedName("time") val time: Int = 0,        // HEATING goal time, COOLING duration; REFLOW usually 0
+    @SerializedName("time_min") val minTime: Int = 0,        // HEATING goal time, COOLING duration; REFLOW usually 0
     @SerializedName("hold_for") val holdFor: Int = 0, // REFLOW hold seconds; others typically 0
 
     // Feed-forward

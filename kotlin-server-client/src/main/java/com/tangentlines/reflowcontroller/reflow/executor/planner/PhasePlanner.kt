@@ -1,4 +1,4 @@
-package com.tangentlines.reflowcontroller.reflow.executor
+package com.tangentlines.reflowcontroller.reflow.executor.planner
 
 import com.tangentlines.reflowcontroller.reflow.profile.Phase
 

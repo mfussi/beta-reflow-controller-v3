@@ -1,4 +1,4 @@
-package com.tangentlines.reflowcontroller.reflow.executor
+package com.tangentlines.reflowcontroller.reflow.executor.planner
 
 data class SafetyConfig(
     val absoluteMaxTemperature: Float = 260f,
