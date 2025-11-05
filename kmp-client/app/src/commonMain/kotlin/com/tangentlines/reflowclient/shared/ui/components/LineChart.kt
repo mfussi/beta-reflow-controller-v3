@@ -208,7 +208,7 @@ fun IntensityChart(base : ChartDataBase?) {
     }
 
     val baseColor = MaterialTheme.colorScheme.primary
-    val secColor = lerp(baseColor, Color.Black, 0.75f)
+    val secColor = lerp(baseColor, MaterialTheme.colorScheme.onPrimary, 0.75f)
 
     LineChart(
         series = listOf(
